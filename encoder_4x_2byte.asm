@@ -12,7 +12,7 @@
  __CONFIG _CONFIG3, _WDTCPS_WDTCPS1F & _WDTE_OFF & _WDTCWS_WDTCWSSW & _WDTCCS_SWC 
 
 ;------------------------------------------------------------------------------- 
-;ORAJEL beallitas
+;óRAJEL beállítás
  #define osccon b'01111000' ;16 mhz-re állítjuk a bels? oscillátort 
  
 ;------------------------------------------------------------------------------- 
