@@ -1,0 +1,3902 @@
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  1
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00001 ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
+                      00002 #include "p16F1619.inc" 
+                      00001         LIST
+                      00002 
+                      00003 ;==========================================================================
+                      00004 ; Build date : Jul 23 2018
+                      00005 ;  MPASM PIC16F1619 processor include
+                      00006 ; 
+                      00007 ;  (c) Copyright 1999-2018 Microchip Technology, All rights reserved
+                      00008 ;==========================================================================
+                      00009 
+                      05270         LIST
+                      00003  
+8007   3FFC           00004  __CONFIG _CONFIG1, _FOSC_INTOSC & _PWRTE_OFF & _MCLRE_ON & _CP_OFF & _BOREN_ON & _CLKOUTEN_OFF & _IESO_
+                            ON & _FCMEN_ON
+                      00005 ; CONFIG2
+                      00006 ; __config 0xFFFF
+8008   3FFF           00007  __CONFIG _CONFIG2, _WRT_OFF & _PPS1WAY_ON & _ZCD_OFF & _PLLEN_ON & _STVREN_ON & _BORV_LO & _LPBOR_OFF &
+                             _LVP_ON
+                      00008 ; CONFIG3
+                      00009 ; __config 0xFFFF
+8009   3F9F           00010  __CONFIG _CONFIG3, _WDTCPS_WDTCPS1F & _WDTE_OFF & _WDTCWS_WDTCWSSW & _WDTCCS_SWC 
+                      00011 
+                      00012 ;------------------------------------------------------------------------------- 
+                      00013 ;ORAJEL beallitas
+                      00014  #define osccon b'01111000' ;16 mhz-re allitjuk a belso oscillatort 
+                      00015  
+                      00016 ;------------------------------------------------------------------------------- 
+                      00017 ;INTERRUPT lábak definiálása
+                      00018  
+                      00019 #define intpps b'00010100' ; Interrupt periféria hozzárendelés lábakhoz
+                      00020 #define intcon b'11001000' ; Interrupt konfiguráció változás figyelésre van beállítva   
+                      00021 #define ioccp  b'11000000' ; Interrupt felfutó él figyelés 6. 7. es lábon C porton
+                      00022 #define ioccn  b'11000000' ; Interrupt lefutó él figyelés 6. 7. es lábon C porton
+                      00023 
+                      00024 
+                      00025 ;-------------------------------------------------------------------------------    
+                      00026 RES_VECT CODE 0x0000            ; processor reset vector
+0000   2???           00027     GOTO Start                  ; go to beginning of progra,
+                      00028     
+Warning[205]: Found directive in column 1. (org)
+                      00029 org 4                           ;ISR kezdö címe
+Warning[203]: Found opcode in column 1. (goto)
+0004   2???           00030 goto ISR
+                      00031 
+                      00032 ;-------------------------------------------------------------------------------
+                      00033 ;Változok merioa területhez rendelése közös ram-ot használom
+                      00034     
+Warning[205]: Found directive in column 1. (cblock)
+                      00035 cblock     0x70
+  00000070            00036     POS:2   ;0x70 LSB, 0x71 MSB ;Poziciot ebben a két bitben tároljuk
+  00000072            00037     s       ;0x72
+  00000073            00038     state   ;0x73
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  2
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+  00000074            00039     temp    ;0x74
+Warning[205]: Found directive in column 1. (ENDC)
+                      00040 endc
+                      00041    
+                      00042 ;------------------------------------------------------------------------------- 
+                      00043 ;INTERRUPT SERVICE ROUTINE
+                      00044 
+0005                  00045 ISR                     ;ISR programja
+0005   0020           00046  BANKSEL PORTC          ;megvizsgaljuk melyik labon jott interrupt
+0006   080E           00047  movfw PORTC            ;és ezt lementjük a temp-be
+0007   00F4           00048  movwf temp             
+0008   1FF4           00049  btfss temp,7
+0009   2???           00050  goto PINA
+Warning[207]: Found label after column 1. (BTEST)
+000A                  00051  BTEST
+000A   1F74           00052  btfss temp,6
+000B   2???           00053  goto PINB
+000C   2???           00054  goto UGRAS
+                      00055 
+000D                  00056 PINA
+Warning[204]: Found pseudo-op in column 1. (movfw)
+000D   0872           00057 movfw s                 ;s-be letrehozzuk az elozo es az aktualis allapot kombinaciojat
+Warning[203]: Found opcode in column 1. (iorlw)
+000E   3804           00058 iorlw b'00000100'     
+Warning[203]: Found opcode in column 1. (movwf)
+000F   00F2           00059 movwf s
+0010   2???           00060  goto BTEST
+0011                  00061 PINB
+Warning[204]: Found pseudo-op in column 1. (movfw)
+0011   0872           00062 movfw s
+Warning[203]: Found opcode in column 1. (iorlw)
+0012   3808           00063 iorlw b'00001000'
+Warning[203]: Found opcode in column 1. (movwf)
+0013   00F2           00064 movwf s
+0014   2???           00065  goto UGRAS
+                      00066 
+                      00067 ;---------------------------------------------------------
+                      00068 ;Lehetseges esetek  amik elofrodulhatnak az enkoder forgása közben a tabla  ide ugrik vissza
+0015                  00069 SEMMI
+0015   2???           00070     goto EXITISR
+0016                  00071 PLUS1
+Message[305]: Using default destination of 1 (file).
+0016   0AF0           00072     incf POS
+0017   1903           00073     btfsc STATUS,Z
+Message[305]: Using default destination of 1 (file).
+0018   0AF1           00074     incf POS+1
+0019   2???           00075     goto EXITISR
+001A                  00076 MINUS1
+001A   3001           00077     movlw 0x01
+Message[305]: Using default destination of 1 (file).
+001B   02F0           00078     subwf POS
+001C   1C03           00079     BTFSS STATUS,C
+Message[305]: Using default destination of 1 (file).
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  3
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+001D   03F1           00080     decf POS+1
+001E   2???           00081     goto EXITISR
+001F                  00082 PLUS2
+Message[305]: Using default destination of 1 (file).
+001F   0AF0           00083     incf POS
+0020   1903           00084     btfsc STATUS,Z
+Message[305]: Using default destination of 1 (file).
+0021   0AF1           00085     incf POS+1  
+Message[305]: Using default destination of 1 (file).
+0022   0AF0           00086     incf POS
+0023   1903           00087     btfsc STATUS,Z
+Message[305]: Using default destination of 1 (file).
+0024   0AF1           00088     incf POS+1
+0025   2???           00089     goto EXITISR
+0026                  00090 MINUS2
+0026   3000           00091     movlw 0x0
+Message[305]: Using default destination of 1 (file).
+0027   02F0           00092     subwf POS
+0028   1C03           00093     BTFSS STATUS,C
+Message[305]: Using default destination of 1 (file).
+0029   03F1           00094     decf POS+1
+002A   2???           00095     goto EXITISR
+                      00096     
+002B                  00097 EXITISR                 ;itt lépünk ki az ISR-bol
+                      00098  
+                      00099             
+Message[305]: Using default destination of 1 (file).
+002B   0CF2           00100  rrf s
+Message[305]: Using default destination of 1 (file).
+002C   0CF2           00101  rrf s                  ;itt jobbra kell tolni elozo ket bitet hogy az legyen a régi pozicio
+002D   0872           00102  movfw s            
+002E   3903           00103  andlw 0x03             ;maszkolunk
+002F   00F2           00104  movwf s
+                      00105  
+0030   0027           00106    BANKSEL IOCCF
+0031   30FF           00107     MOVLW 0xff          ;interrupt flaget töröljük a c porton
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0032   0619           00108     XORWF IOCCF, W      ;Ezt a ISR-bol valo kilepes elott el kell vegezni    
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0033   0599           00109     ANDWF IOCCF, F      ;Ezt érdemes külön blokkba helyezni így több elágazáshoz lehet felhasználni    
+0034   0009           00110     retfie
+                      00111  
+0035                  00112 Start
+                      00113 ;------------------------------------------------------------------------------- 
+                      00114 ;ORAJEL beallitas
+Warning[205]: Found directive in column 1. (BANKSEL)
+0035   0021           00115 BANKSEL OSCCON
+0036   3078           00116     movlw osccon
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0037   0099           00117     movwf OSCCON
+                      00118 ;-------------------------------------------------------------------------------
+                      00119 ;I/O beállítások
+Warning[205]: Found directive in column 1. (BANKSEL)
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  4
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0038   0023           00120 BANKSEL ANSELC
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0039   018E           00121     CLRF ANSELC 
+                      00122 
+Warning[205]: Found directive in column 1. (BANKSEL)
+003A   0021           00123 BANKSEL TRISC
+003B   30FF           00124     movlw b'11111111'
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+003C   008E           00125     movwf TRISC 
+                      00126  
+Warning[205]: Found directive in column 1. (BANKSEL)
+003D   0020           00127 BANKSEL PORTC
+003E   018E           00128     clrf PORTC
+                      00129 ;-------------------------------------------------------------------------------
+                      00130 ;LED D5 RA5
+                      00131 ;BANKSEL ANSELA
+                      00132     ;CLRF ANSELA 
+                      00133 
+                      00134 ;BANKSEL TRISA
+                      00135     ;CLRF TRISA 
+                      00136  
+                      00137 ;BANKSEL PORTA
+                      00138     ;clrf PORTA
+                      00139 
+                      00140    
+                      00141 
+                      00142 ;------------------------------------------------------------------------------- 
+                      00143 ;INTERRUPT lábak beállítása
+                      00144 
+Warning[205]: Found directive in column 1. (BANKSEL)
+003F   003C           00145 BANKSEL INTPPS
+0040   3014           00146  movlw intpps
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0041   0090           00147  movwf INTPPS
+                      00148  
+Warning[205]: Found directive in column 1. (BANKSEL)
+0042   0020           00149 BANKSEL INTCON
+0043   30C8           00150  movlw intcon
+0044   008B           00151  movwf INTCON
+                      00152 
+Warning[205]: Found directive in column 1. (BANKSEL)
+0045   0027           00153 BANKSEL IOCCP
+0046   30C0           00154  movlw ioccp
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+0047   0097           00155  movwf IOCCP
+                      00156  
+Warning[205]: Found directive in column 1. (BANKSEL)
+0048   0027           00157 BANKSEL IOCCN
+0049   30C0           00158  movlw ioccn
+Message[302]: Register in operand not in bank 0.  Ensure that bank bits are correct.
+004A   0098           00159  movwf IOCCN
+                      00160  
+                      00161 ;------------------------------------------------------------------------------- 
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  5
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+                      00162 ;State nullazasa program indulaskor
+Warning[203]: Found opcode in column 1. (movlw)
+004B   3000           00163 movlw 0x00
+Warning[203]: Found opcode in column 1. (movwf)
+004C   00F0           00164 movwf POS
+Warning[203]: Found opcode in column 1. (movwf)
+004D   00F1           00165 movwf POS+1
+                      00166     
+Warning[205]: Found directive in column 1. (BANKSEL)
+004E   0020           00167 BANKSEL PORTC
+Warning[204]: Found pseudo-op in column 1. (movfw)
+004F   080E           00168 movfw PORTC
+Warning[203]: Found opcode in column 1. (andlw)
+0050   3903           00169 andlw 0x03
+Warning[203]: Found opcode in column 1. (movwf)
+0051   00F2           00170 movwf s
+                      00171 
+                      00172    
+                      00173 ;------------------------------------------------------------------------------- 
+                      00174 ;Foprogram
+                      00175  
+Warning[207]: Found label after column 1. (main)
+0052                  00176  main
+                      00177  
+0052   0870           00178     movfw POS
+0053   2???           00179     goto main
+                      00180     
+                      00181 ;-------------------------------------------------
+                      00182 ;tabla a szamitott ugrashoz amely levalogatja az enkoder valtozoit
+0054                  00183 UGRAS
+                      00184      org     0xf7 
+00F7   0872           00185      movfw     s
+00F8   390F           00186      andlw     0x0F                ; mask off invalid  maskoljuk ami nem érdkel csak az also 4 bit kell 
+                            ez 16 változot tud tárolni; also 4biten igy az aktuális pozició van
+00F9   00F3           00187      movwf     state               ;köztes változoba mentjük el
+00FA   30??           00188      movlw     high TABEL          ; get high order part of the beginning of the table ;a memoriacim 13 
+                            bites ahol a táblázatunk kezdödik annak felso 5 bitjét bemásoljuk a pc lath ba
+00FB   008A           00189      movwf     PCLATH              ; a PCLATH fogja adni a táblázat fels? 5 bitjének a cimét hogy nekünk
+                             cska az also 8 bitttel keljen foglakoznunk
+00FC   30??           00190      movlw     low TABEL           ; load starting address of table; also 8 bitet teszi w be
+00FD   0773           00191      addwf     state,w             ; add offset; ezzel hozzáadja azt az értéket ami vizsgálni kivánt reg
+                            iszterben volt és igy már táblában a jo helyre fog ugrani 
+00FE   1803           00192      btfsc     STATUS,C            ; did it overflow?  ezzel ellen?rizzük hogy eléfrtük e az adott memor
+                            ia lapon
+00FF   0A8A           00193      incf      PCLATH,f            ; yes: increment PCLATH   ha tullog akkor a pclathban lév? fels? 5 bi
+                            tet eggyel eltoljuk hogy raférjünk a  táblára
+0100   0082           00194      movwf     PCL                
+                      00195 ;----------------------------------------------------------------
+                      00196  
+                      00197     org 256                ; modify PCL
+0256                  00198 TABEL
+0256   2???           00199      goto     SEMMI        ; 0000
+0257   2???           00200      goto     PLUS1        ; 0001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  6
+
+
+LOC  OBJECT CODE     LINE SOURCE TEXT
+  VALUE
+
+0258   2???           00201      goto     MINUS1       ; 0010
+0259   2???           00202      goto     PLUS2        ; 0011
+025A   2???           00203      goto     MINUS1       ; 0100
+025B   2???           00204      goto     SEMMI        ; 0101
+025C   2???           00205      goto     MINUS2       ; 0110
+025D   2???           00206      goto     PLUS1        ; 0111
+025E   2???           00207      goto     PLUS1        ; 1000
+025F   2???           00208      goto     MINUS2       ; 1001
+0260   2???           00209      goto     SEMMI        ; 1010
+0261   2???           00210      goto     MINUS1       ; 1011
+0262   2???           00211      goto     PLUS2        ; 1100
+0263   2???           00212      goto     MINUS1       ; 1101
+0264   2???           00213      goto     PLUS1        ; 1110
+0265   2???           00214      goto     SEMMI        ; 1111
+                      00215  
+                      00216  
+3FFC 3FFF 3F9F        00217  end
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  7
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ABDEN                             00000000
+ABDOVF                            00000007
+ACC0                              00000000
+ACC1                              00000001
+ACC10                             00000002
+ACC11                             00000003
+ACC12                             00000004
+ACC13                             00000005
+ACC14                             00000006
+ACC15                             00000007
+ACC16                             00000000
+ACC17                             00000001
+ACC18                             00000002
+ACC19                             00000003
+ACC2                              00000002
+ACC20                             00000004
+ACC21                             00000005
+ACC22                             00000006
+ACC23                             00000007
+ACC24                             00000000
+ACC25                             00000001
+ACC26                             00000002
+ACC27                             00000003
+ACC28                             00000004
+ACC29                             00000005
+ACC3                              00000003
+ACC30                             00000006
+ACC31                             00000007
+ACC32                             00000000
+ACC33                             00000001
+ACC34                             00000002
+ACC4                              00000004
+ACC5                              00000005
+ACC6                              00000006
+ACC7                              00000007
+ACC8                              00000000
+ACC9                              00000001
+ACCM                              00000004
+ACCS                              00000001
+ACKDT                             00000005
+ACKEN                             00000004
+ACKSTAT                           00000006
+ACKTIM                            00000007
+ADCON0                            0000009D
+ADCON1                            0000009E
+ADCON2                            0000009F
+ADCS0                             00000004
+ADCS1                             00000005
+ADCS2                             00000006
+ADD0                              00000000
+ADD1                              00000001
+ADD2                              00000002
+ADD3                              00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  8
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ADD4                              00000004
+ADD5                              00000005
+ADD6                              00000006
+ADD7                              00000007
+ADDEN                             00000003
+ADFM                              00000007
+ADFVR0                            00000000
+ADFVR1                            00000001
+ADGO                              00000001
+ADIE                              00000006
+ADIF                              00000006
+ADON                              00000000
+ADPREF0                           00000000
+ADPREF1                           00000001
+ADRES                             0000009B
+ADRESH                            0000009C
+ADRESL                            0000009B
+AHEN                              00000001
+ANSA0                             00000000
+ANSA1                             00000001
+ANSA2                             00000002
+ANSA4                             00000004
+ANSB4                             00000004
+ANSB5                             00000005
+ANSB6                             00000006
+ANSB7                             00000007
+ANSC0                             00000000
+ANSC1                             00000001
+ANSC2                             00000002
+ANSC3                             00000003
+ANSC6                             00000006
+ANSC7                             00000007
+ANSELA                            0000018C
+ANSELB                            0000018D
+ANSELC                            0000018E
+APMOD                             00000001
+AS                                00000000
+AT1ACCS                           00000001
+AT1APMOD                          00000001
+AT1CAP1P                          00000003
+AT1CAP2P                          00000003
+AT1CAP3P                          00000003
+AT1CC1                            0000088F
+AT1CC10                           00000000
+AT1CC11                           00000001
+AT1CC12                           00000002
+AT1CC13                           00000003
+AT1CC14                           00000004
+AT1CC15                           00000005
+AT1CC16                           00000006
+AT1CC17                           00000007
+AT1CC18                           00000000
+AT1CC19                           00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE  9
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+AT1CC1EN                          00000007
+AT1CC1H                           00000890
+AT1CC1IE                          00000000
+AT1CC1IF                          00000000
+AT1CC1L                           0000088F
+AT1CC1MODE                        00000000
+AT1CC1POL                         00000004
+AT1CC2                            00000893
+AT1CC20                           00000000
+AT1CC21                           00000001
+AT1CC22                           00000002
+AT1CC23                           00000003
+AT1CC24                           00000004
+AT1CC25                           00000005
+AT1CC26                           00000006
+AT1CC27                           00000007
+AT1CC28                           00000000
+AT1CC29                           00000001
+AT1CC2EN                          00000007
+AT1CC2H                           00000894
+AT1CC2IE                          00000001
+AT1CC2IF                          00000001
+AT1CC2L                           00000893
+AT1CC2MODE                        00000000
+AT1CC2POL                         00000004
+AT1CC3                            00000897
+AT1CC30                           00000000
+AT1CC31                           00000001
+AT1CC32                           00000002
+AT1CC33                           00000003
+AT1CC34                           00000004
+AT1CC35                           00000005
+AT1CC36                           00000006
+AT1CC37                           00000007
+AT1CC38                           00000000
+AT1CC39                           00000001
+AT1CC3EN                          00000007
+AT1CC3H                           00000898
+AT1CC3IE                          00000002
+AT1CC3IF                          00000002
+AT1CC3L                           00000897
+AT1CC3MODE                        00000000
+AT1CC3POL                         00000004
+AT1CCON1                          00000891
+AT1CCON2                          00000895
+AT1CCON3                          00000899
+AT1CLK                            0000088C
+AT1CON0                           00000814
+AT1CON1                           00000815
+AT1CP1S0                          00000000
+AT1CP1S1                          00000001
+AT1CP1S2                          00000002
+AT1CP2S0                          00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 10
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+AT1CP2S1                          00000001
+AT1CP2S2                          00000002
+AT1CP3S0                          00000000
+AT1CP3S1                          00000001
+AT1CP3S2                          00000002
+AT1CS                             00000000
+AT1CS0                            00000000
+AT1CSEL1                          0000088E
+AT1CSEL2                          00000892
+AT1CSEL3                          00000896
+AT1EN                             00000007
+AT1ERR                            0000081C
+AT1ERR0                           00000000
+AT1ERR1                           00000001
+AT1ERR10                          00000002
+AT1ERR11                          00000003
+AT1ERR12                          00000004
+AT1ERR13                          00000005
+AT1ERR14                          00000006
+AT1ERR15                          00000007
+AT1ERR2                           00000002
+AT1ERR3                           00000003
+AT1ERR4                           00000004
+AT1ERR5                           00000005
+AT1ERR6                           00000006
+AT1ERR7                           00000007
+AT1ERR8                           00000000
+AT1ERR9                           00000001
+AT1ERRH                           0000081D
+AT1ERRL                           0000081C
+AT1IE                             00000002
+AT1IE0                            00000817
+AT1IE1                            00000819
+AT1IF                             00000002
+AT1IR0                            00000816
+AT1IR1                            00000818
+AT1MISS                           0000080E
+AT1MISS0                          00000000
+AT1MISS1                          00000001
+AT1MISS10                         00000002
+AT1MISS11                         00000003
+AT1MISS12                         00000004
+AT1MISS13                         00000005
+AT1MISS14                         00000006
+AT1MISS15                         00000007
+AT1MISS2                          00000002
+AT1MISS3                          00000003
+AT1MISS4                          00000004
+AT1MISS5                          00000005
+AT1MISS6                          00000006
+AT1MISS7                          00000007
+AT1MISS8                          00000000
+AT1MISS9                          00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 11
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+AT1MISSH                          0000080F
+AT1MISSIE                         00000001
+AT1MISSIF                         00000001
+AT1MISSL                          0000080E
+AT1MODE                           00000000
+AT1MPP                            00000002
+AT1PER                            00000810
+AT1PER0                           00000000
+AT1PER1                           00000001
+AT1PER10                          00000002
+AT1PER11                          00000003
+AT1PER12                          00000004
+AT1PER13                          00000005
+AT1PER14                          00000006
+AT1PER2                           00000002
+AT1PER3                           00000003
+AT1PER4                           00000004
+AT1PER5                           00000005
+AT1PER6                           00000006
+AT1PER7                           00000007
+AT1PER8                           00000000
+AT1PER9                           00000001
+AT1PERH                           00000811
+AT1PERIE                          00000000
+AT1PERIF                          00000000
+AT1PERL                           00000810
+AT1PHP                            00000006
+AT1PHS                            00000812
+AT1PHS0                           00000000
+AT1PHS1                           00000001
+AT1PHS2                           00000002
+AT1PHS3                           00000003
+AT1PHS4                           00000004
+AT1PHS5                           00000005
+AT1PHS6                           00000006
+AT1PHS7                           00000007
+AT1PHS8                           00000000
+AT1PHS9                           00000001
+AT1PHSH                           00000813
+AT1PHSIE                          00000002
+AT1PHSIF                          00000002
+AT1PHSL                           00000812
+AT1POL                            00000003
+AT1POV                            00000007
+AT1PREC                           00000006
+AT1PRP                            00000004
+AT1PS0                            00000004
+AT1PS1                            00000005
+AT1RES                            0000080C
+AT1RES0                           00000000
+AT1RES1                           00000001
+AT1RES2                           00000002
+AT1RES3                           00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 12
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+AT1RES4                           00000004
+AT1RES5                           00000005
+AT1RES6                           00000006
+AT1RES7                           00000007
+AT1RES8                           00000000
+AT1RES9                           00000001
+AT1RESH                           0000080D
+AT1RESL                           0000080C
+AT1SIG                            0000088D
+AT1SSEL0                          00000000
+AT1SSEL1                          00000001
+AT1SSEL2                          00000002
+AT1STPT                           0000081A
+AT1STPT0                          00000000
+AT1STPT1                          00000001
+AT1STPT10                         00000002
+AT1STPT11                         00000003
+AT1STPT12                         00000004
+AT1STPT13                         00000005
+AT1STPT14                         00000006
+AT1STPT2                          00000002
+AT1STPT3                          00000003
+AT1STPT4                          00000004
+AT1STPT5                          00000005
+AT1STPT6                          00000006
+AT1STPT7                          00000007
+AT1STPT8                          00000000
+AT1STPT9                          00000001
+AT1STPTH                          0000081B
+AT1STPTL                          0000081A
+AT1VALID                          00000000
+ATCC1PPS                          00000E1F
+ATCC1PPS0                         00000000
+ATCC1PPS1                         00000001
+ATCC1PPS2                         00000002
+ATCC1PPS3                         00000003
+ATCC1PPS4                         00000004
+ATCC2PPS                          00000E23
+ATCC2PPS0                         00000000
+ATCC2PPS1                         00000001
+ATCC2PPS2                         00000002
+ATCC2PPS3                         00000003
+ATCC2PPS4                         00000004
+ATCC3PPS                          00000E2E
+ATCC3PPS0                         00000000
+ATCC3PPS1                         00000001
+ATCC3PPS2                         00000002
+ATCC3PPS3                         00000003
+ATCC3PPS4                         00000004
+ATINPPS                           00000E16
+ATINPPS0                          00000000
+ATINPPS1                          00000001
+ATINPPS2                          00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 13
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+ATINPPS3                          00000003
+ATINPPS4                          00000004
+BAUD1CON                          0000019F
+BAUDCON                           0000019F
+BAUDCON1                          0000019F
+BAUDCTL                           0000019F
+BAUDCTL1                          0000019F
+BCL1IE                            00000003
+BCL1IF                            00000003
+BF                                00000000
+BOEN                              00000004
+BORCON                            00000116
+BORFS                             00000006
+BORRDY                            00000000
+BRG16                             00000003
+BRGH                              00000002
+BSR                               00000008
+BSR0                              00000000
+BSR1                              00000001
+BSR2                              00000002
+BSR3                              00000003
+BSR4                              00000004
+BSR_SHAD                          00000FE6
+BTEST                             0000000A
+BUF0                              00000000
+BUF1                              00000001
+BUF2                              00000002
+BUF3                              00000003
+BUF4                              00000004
+BUF5                              00000005
+BUF6                              00000006
+BUF7                              00000007
+BUSY_CRCCON0                      00000005
+BUSY_PID1CON                      00000006
+BUSY_SCANCON0                     00000005
+C                                 00000000
+C1AS                              00000001
+C1HYS                             00000001
+C1IE                              00000005
+C1IF                              00000005
+C1INTN                            00000006
+C1INTP                            00000007
+C1NCH0                            00000000
+C1NCH1                            00000001
+C1NCH2                            00000002
+C1ON                              00000007
+C1OUT                             00000006
+C1PCH0                            00000004
+C1PCH1                            00000005
+C1POL                             00000004
+C1SP                              00000002
+C1SYNC                            00000000
+C2AS                              00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 14
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+C2HYS                             00000001
+C2IE                              00000006
+C2IF                              00000006
+C2INTN                            00000006
+C2INTP                            00000007
+C2NCH0                            00000000
+C2NCH1                            00000001
+C2NCH2                            00000002
+C2ON                              00000007
+C2OUT                             00000006
+C2PCH0                            00000004
+C2PCH1                            00000005
+C2POL                             00000004
+C2SP                              00000002
+C2SYNC                            00000000
+CAP1P                             00000003
+CAP2P                             00000003
+CAP3P                             00000003
+CC10                              00000000
+CC11                              00000001
+CC12                              00000002
+CC13                              00000003
+CC14                              00000004
+CC15                              00000005
+CC16                              00000006
+CC17                              00000007
+CC18                              00000000
+CC19                              00000001
+CC1EN                             00000007
+CC1MODE                           00000000
+CC1POL                            00000004
+CC20                              00000000
+CC21                              00000001
+CC22                              00000002
+CC24                              00000004
+CC26                              00000006
+CC27                              00000007
+CC28                              00000000
+CC29                              00000001
+CC2EN                             00000007
+CC2MODE                           00000000
+CC2POL                            00000004
+CC30                              00000000
+CC31                              00000001
+CC32                              00000002
+CC33                              00000003
+CC34                              00000004
+CC35                              00000005
+CC36                              00000006
+CC37                              00000007
+CC38                              00000000
+CC39                              00000001
+CC3EN                             00000007
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 15
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CC3MODE                           00000000
+CC3POL                            00000004
+CCP1CAP                           00000294
+CCP1CON                           00000293
+CCP1CTS0                          00000000
+CCP1CTS1                          00000001
+CCP1CTS2                          00000002
+CCP1EN                            00000007
+CCP1FMT                           00000004
+CCP1IE                            00000002
+CCP1IF                            00000002
+CCP1MODE0                         00000000
+CCP1MODE1                         00000001
+CCP1MODE2                         00000002
+CCP1MODE3                         00000003
+CCP1OUT                           00000005
+CCP1PPS                           00000E14
+CCP1PPS0                          00000000
+CCP1PPS1                          00000001
+CCP1PPS2                          00000002
+CCP1PPS3                          00000003
+CCP1PPS4                          00000004
+CCP1TSEL0                         00000000
+CCP1TSEL1                         00000001
+CCP2CAP                           0000029B
+CCP2CON                           0000029A
+CCP2CTS0                          00000000
+CCP2CTS1                          00000001
+CCP2CTS2                          00000002
+CCP2EN                            00000007
+CCP2FMT                           00000004
+CCP2IE                            00000000
+CCP2IF                            00000000
+CCP2MODE0                         00000000
+CCP2MODE1                         00000001
+CCP2MODE2                         00000002
+CCP2MODE3                         00000003
+CCP2OUT                           00000005
+CCP2PPS                           00000E15
+CCP2PPS0                          00000000
+CCP2PPS1                          00000001
+CCP2PPS2                          00000002
+CCP2PPS3                          00000003
+CCP2PPS4                          00000004
+CCP2TSEL0                         00000002
+CCP2TSEL1                         00000003
+CCPR1                             00000291
+CCPR1H                            00000292
+CCPR1L                            00000291
+CCPR2                             00000298
+CCPR2H                            00000299
+CCPR2L                            00000298
+CCPTMRS                           0000029E
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 16
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CCW5                              00000005
+CDAFVR0                           00000002
+CDAFVR1                           00000003
+CFGS                              00000006
+CHS0                              00000002
+CHS1                              00000003
+CHS2                              00000004
+CHS3                              00000005
+CHS4                              00000006
+CKE                               00000006
+CKP                               00000004
+CKPOL                             00000006
+CKPPS                             00000E25
+CKPPS0                            00000000
+CKPPS1                            00000001
+CKPPS2                            00000002
+CKPPS3                            00000003
+CKPPS4                            00000004
+CKPS0                             00000004
+CKPS1                             00000005
+CKPS2                             00000006
+CKSYNC                            00000005
+CLC1CON                           00000F10
+CLC1GLS0                          00000F16
+CLC1GLS1                          00000F17
+CLC1GLS2                          00000F18
+CLC1GLS3                          00000F19
+CLC1IE                            00000000
+CLC1IF                            00000000
+CLC1POL                           00000F11
+CLC1SEL0                          00000F12
+CLC1SEL1                          00000F13
+CLC1SEL2                          00000F14
+CLC1SEL3                          00000F15
+CLC2CON                           00000F1A
+CLC2GLS0                          00000F20
+CLC2GLS1                          00000F21
+CLC2GLS2                          00000F22
+CLC2GLS3                          00000F23
+CLC2IE                            00000001
+CLC2IF                            00000001
+CLC2POL                           00000F1B
+CLC2SEL0                          00000F1C
+CLC2SEL1                          00000F1D
+CLC2SEL2                          00000F1E
+CLC2SEL3                          00000F1F
+CLC3CON                           00000F24
+CLC3GLS0                          00000F2A
+CLC3GLS1                          00000F2B
+CLC3GLS2                          00000F2C
+CLC3GLS3                          00000F2D
+CLC3IE                            00000002
+CLC3IF                            00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 17
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CLC3POL                           00000F25
+CLC3SEL0                          00000F26
+CLC3SEL1                          00000F27
+CLC3SEL2                          00000F28
+CLC3SEL3                          00000F29
+CLC4CON                           00000F2E
+CLC4GLS0                          00000F34
+CLC4GLS1                          00000F35
+CLC4GLS2                          00000F36
+CLC4GLS3                          00000F37
+CLC4IE                            00000003
+CLC4IF                            00000003
+CLC4POL                           00000F2F
+CLC4SEL0                          00000F30
+CLC4SEL1                          00000F31
+CLC4SEL2                          00000F32
+CLC4SEL3                          00000F33
+CLCDATA                           00000F0F
+CLCIN0PPS                         00000E28
+CLCIN0PPS0                        00000000
+CLCIN0PPS1                        00000001
+CLCIN0PPS2                        00000002
+CLCIN0PPS3                        00000003
+CLCIN0PPS4                        00000004
+CLCIN1PPS                         00000E29
+CLCIN1PPS0                        00000000
+CLCIN1PPS1                        00000001
+CLCIN1PPS2                        00000002
+CLCIN1PPS3                        00000003
+CLCIN1PPS4                        00000004
+CLCIN2PPS                         00000E2A
+CLCIN2PPS0                        00000000
+CLCIN2PPS1                        00000001
+CLCIN2PPS2                        00000002
+CLCIN2PPS3                        00000003
+CLCIN2PPS4                        00000004
+CLCIN3PPS                         00000E2B
+CLCIN3PPS0                        00000000
+CLCIN3PPS1                        00000001
+CLCIN3PPS2                        00000002
+CLCIN3PPS3                        00000003
+CLCIN3PPS4                        00000004
+CM1CON0                           00000111
+CM1CON1                           00000112
+CM2CON0                           00000113
+CM2CON1                           00000114
+CMOUT                             00000115
+CP1S0                             00000000
+CP1S1                             00000001
+CP1S2                             00000002
+CP2S0                             00000000
+CP2S1                             00000001
+CP2S2                             00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 18
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CP3S0                             00000000
+CP3S1                             00000001
+CP3S2                             00000002
+CPOL                              00000002
+CPRUP                             00000007
+CPWUP                             00000006
+CRCACC                            00000793
+CRCACC0                           00000000
+CRCACC1                           00000001
+CRCACC10                          00000002
+CRCACC11                          00000003
+CRCACC12                          00000004
+CRCACC13                          00000005
+CRCACC14                          00000006
+CRCACC15                          00000007
+CRCACC2                           00000002
+CRCACC3                           00000003
+CRCACC4                           00000004
+CRCACC5                           00000005
+CRCACC6                           00000006
+CRCACC7                           00000007
+CRCACC8                           00000000
+CRCACC9                           00000001
+CRCACCH                           00000794
+CRCACCL                           00000793
+CRCACCM                           00000004
+CRCBUSY                           00000005
+CRCCON0                           00000799
+CRCCON1                           0000079A
+CRCDAT                            00000791
+CRCDAT0                           00000000
+CRCDAT1                           00000001
+CRCDAT10                          00000002
+CRCDAT11                          00000003
+CRCDAT12                          00000004
+CRCDAT13                          00000005
+CRCDAT14                          00000006
+CRCDAT15                          00000007
+CRCDAT2                           00000002
+CRCDAT3                           00000003
+CRCDAT4                           00000004
+CRCDAT5                           00000005
+CRCDAT6                           00000006
+CRCDAT8                           00000000
+CRCDAT9                           00000001
+CRCDATH                           00000792
+CRCDATL                           00000791
+CRCDLEN0                          00000004
+CRCDLEN1                          00000005
+CRCDLEN2                          00000006
+CRCDLEN3                          00000007
+CRCEN                             00000007
+CRCFULL                           00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 19
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CRCGO                             00000006
+CRCIE                             00000006
+CRCIF                             00000006
+CRCPLEN0                          00000000
+CRCPLEN1                          00000001
+CRCPLEN2                          00000002
+CRCPLEN3                          00000003
+CRCSHIFT                          00000795
+CRCSHIFT0                         00000000
+CRCSHIFT1                         00000001
+CRCSHIFT10                        00000002
+CRCSHIFT11                        00000003
+CRCSHIFT12                        00000004
+CRCSHIFT13                        00000005
+CRCSHIFT14                        00000006
+CRCSHIFT15                        00000007
+CRCSHIFT2                         00000002
+CRCSHIFT3                         00000003
+CRCSHIFT4                         00000004
+CRCSHIFT5                         00000005
+CRCSHIFT6                         00000006
+CRCSHIFT7                         00000007
+CRCSHIFT8                         00000000
+CRCSHIFT9                         00000001
+CRCSHIFTH                         00000796
+CRCSHIFTL                         00000795
+CRCSHIFTM                         00000001
+CRCXOR                            00000797
+CRCXOR1                           00000001
+CRCXOR10                          00000002
+CRCXOR11                          00000003
+CRCXOR12                          00000004
+CRCXOR13                          00000005
+CRCXOR14                          00000006
+CRCXOR15                          00000007
+CRCXOR2                           00000002
+CRCXOR3                           00000003
+CRCXOR4                           00000004
+CRCXOR5                           00000005
+CRCXOR6                           00000006
+CRCXOR7                           00000007
+CRCXOR8                           00000000
+CRCXOR9                           00000001
+CRCXORH                           00000798
+CRCXORL                           00000797
+CRDCDAT7                          00000007
+CREN                              00000004
+CS                                00000000
+CS0                               00000000
+CS1                               00000001
+CS2                               00000002
+CS3                               00000003
+CSEL0                             00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 20
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CSEL1                             00000001
+CSEL2                             00000002
+CSRC                              00000007
+CTS0                              00000000
+CTS1                              00000001
+CTS2                              00000002
+CWG1AS0                           00000693
+CWG1AS1                           00000694
+CWG1C1AS                          00000001
+CWG1C2AS                          00000002
+CWG1CLKCON                        00000699
+CWG1CON0                          00000696
+CWG1CON1                          00000697
+CWG1CS                            00000000
+CWG1DBF                           00000692
+CWG1DBF0                          00000000
+CWG1DBF1                          00000001
+CWG1DBF2                          00000002
+CWG1DBF3                          00000003
+CWG1DBF4                          00000004
+CWG1DBF5                          00000005
+CWG1DBR                           00000691
+CWG1DBR0                          00000000
+CWG1DBR1                          00000001
+CWG1DBR2                          00000002
+CWG1DBR3                          00000003
+CWG1DBR4                          00000004
+CWG1DBR5                          00000005
+CWG1EN                            00000007
+CWG1IN                            00000005
+CWG1INAS                          00000000
+CWG1IS0                           00000000
+CWG1IS1                           00000001
+CWG1IS2                           00000002
+CWG1IS3                           00000003
+CWG1ISM                           0000069A
+CWG1LD                            00000006
+CWG1LSAC0                         00000002
+CWG1LSAC1                         00000003
+CWG1LSBD0                         00000004
+CWG1LSBD1                         00000005
+CWG1MODE0                         00000000
+CWG1MODE1                         00000001
+CWG1MODE2                         00000002
+CWG1OCON0                         00000695
+CWG1OVRA                          00000004
+CWG1OVRB                          00000005
+CWG1OVRC                          00000006
+CWG1OVRD                          00000007
+CWG1POLA                          00000000
+CWG1POLB                          00000001
+CWG1POLC                          00000002
+CWG1POLD                          00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 21
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+CWG1REN                           00000006
+CWG1SHUTDOWN                      00000007
+CWG1STRA                          00000000
+CWG1STRB                          00000001
+CWG1STRC                          00000002
+CWG1STRD                          00000003
+CWG1TMR2AS                        00000004
+CWG1TMR4AS                        00000005
+CWG1TMR6AS                        00000006
+CWGIE                             00000005
+CWGIF                             00000005
+CWGINPPS                          00000E17
+CWGINPPS0                         00000000
+CWGINPPS1                         00000001
+CWGINPPS2                         00000002
+CWGINPPS3                         00000003
+CWGINPPS4                         00000004
+C_SHAD                            00000000
+D1N                               00000000
+D1PSS0                            00000002
+D1PSS1                            00000003
+D1S0                              00000000
+D1S1                              00000001
+D1S2                              00000002
+D1S3                              00000003
+D1S4                              00000004
+D1S5                              00000005
+D1T                               00000001
+D2N                               00000002
+D2S0                              00000000
+D2S1                              00000001
+D2S2                              00000002
+D2S3                              00000003
+D2S4                              00000004
+D2S5                              00000005
+D2T                               00000003
+D3N                               00000004
+D3S0                              00000000
+D3S1                              00000001
+D3S2                              00000002
+D3S3                              00000003
+D3S4                              00000004
+D3S5                              00000005
+D3T                               00000005
+D4N                               00000006
+D4S0                              00000000
+D4S1                              00000001
+D4S2                              00000002
+D4S3                              00000003
+D4S4                              00000004
+D4S5                              00000005
+D4T                               00000007
+DAC1CON0                          00000118
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 22
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+DAC1CON1                          00000119
+DAC1EN                            00000007
+DAC1OE                            00000005
+DAC1R0                            00000000
+DAC1R1                            00000001
+DAC1R2                            00000002
+DAC1R3                            00000003
+DAC1R4                            00000004
+DAC1R5                            00000005
+DAC1R6                            00000006
+DAC1R7                            00000007
+DAT0                              00000000
+DAT1                              00000001
+DAT10                             00000002
+DAT11                             00000003
+DAT12                             00000004
+DAT13                             00000005
+DAT14                             00000006
+DAT15                             00000007
+DAT2                              00000002
+DAT3                              00000003
+DAT4                              00000004
+DAT5                              00000005
+DAT6                              00000006
+DAT7                              00000007
+DAT8                              00000000
+DAT9                              00000001
+DBF0                              00000000
+DBF1                              00000001
+DBF2                              00000002
+DBF3                              00000003
+DBF4                              00000004
+DBF5                              00000005
+DBR0                              00000000
+DBR1                              00000001
+DBR2                              00000002
+DBR3                              00000003
+DBR4                              00000004
+DBR5                              00000005
+DC                                00000001
+DC0                               00000006
+DC1                               00000007
+DC2                               00000000
+DC3                               00000001
+DC4                               00000002
+DC5                               00000003
+DC6                               00000004
+DC7                               00000005
+DC8                               00000006
+DC9                               00000007
+DC_SHAD                           00000001
+DHEN                              00000000
+DLEN0                             00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 23
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+DLEN1                             00000005
+DLEN2                             00000006
+DLEN3                             00000007
+D_NOT_A                           00000005
+EN                                00000007
+ERR0                              00000000
+ERR1                              00000001
+ERR10                             00000002
+ERR11                             00000003
+ERR12                             00000004
+ERR13                             00000005
+ERR14                             00000006
+ERR15                             00000007
+ERR2                              00000002
+ERR3                              00000003
+ERR4                              00000004
+ERR5                              00000005
+ERR6                              00000006
+ERR7                              00000007
+ERR8                              00000000
+ERR9                              00000001
+ERRH0                             00000000
+ERRH1                             00000001
+ERRH2                             00000002
+ERRH3                             00000003
+ERRH4                             00000004
+ERRH5                             00000005
+ERRH6                             00000006
+ERRH7                             00000007
+ERRL0                             00000000
+ERRL1                             00000001
+ERRL2                             00000002
+ERRL3                             00000003
+ERRL4                             00000004
+ERRL5                             00000005
+ERRL6                             00000006
+ERRL7                             00000007
+EXITISR                           0000002B
+F                                 00000001
+FERR                              00000002
+FMT                               00000004
+FREE                              00000004
+FSR0                              00000004
+FSR0H                             00000005
+FSR0H_SHAD                        00000FE9
+FSR0L                             00000004
+FSR0L_SHAD                        00000FE8
+FSR1                              00000006
+FSR1H                             00000007
+FSR1H_SHAD                        00000FEB
+FSR1L                             00000006
+FSR1L_SHAD                        00000FEA
+FULL                              00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 24
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+FVRCON                            00000117
+FVREN                             00000007
+FVRRDY                            00000006
+G1EN                              00000007
+G1POL                             00000000
+G2POL                             00000001
+G3POL                             00000002
+G4D1N                             00000000
+G4D1T                             00000001
+G4D2N                             00000002
+G4D2T                             00000003
+G4D3N                             00000004
+G4D3T                             00000005
+G4D4N                             00000006
+G4D4T                             00000007
+G4POL                             00000003
+GCEN                              00000007
+GIE                               00000007
+GO                                00000001
+GO_NOT_DONE                       00000001
+HADR0                             00000000
+HADR1                             00000001
+HADR10                            00000002
+HADR11                            00000003
+HADR12                            00000004
+HADR13                            00000005
+HADR14                            00000006
+HADR15                            00000007
+HADR3                             00000003
+HADR4                             00000004
+HADR5                             00000005
+HADR6                             00000006
+HADR7                             00000007
+HADR8                             00000000
+HADR9                             00000001
+HARD2                             00000002
+HFIOFL                            00000003
+HFIOFR                            00000004
+HFIOFS                            00000000
+HIDC4                             00000004
+HIDC5                             00000005
+HIDRVC                            0000040E
+IN                                00000005
+IN0                               00000000
+IN1                               00000001
+IN10                              00000002
+IN11                              00000003
+IN12                              00000004
+IN13                              00000005
+IN14                              00000006
+IN15                              00000007
+IN2                               00000002
+IN3                               00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 25
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+IN4                               00000004
+IN5                               00000005
+IN6                               00000006
+IN7                               00000007
+IN8                               00000000
+IN9                               00000001
+INAS                              00000000
+INDF0                             00000000
+INDF1                             00000001
+INLVLA                            0000038C
+INLVLA0                           00000000
+INLVLA1                           00000001
+INLVLA2                           00000002
+INLVLA3                           00000003
+INLVLA4                           00000004
+INLVLA5                           00000005
+INLVLB                            0000038D
+INLVLB4                           00000004
+INLVLB5                           00000005
+INLVLB6                           00000006
+INLVLB7                           00000007
+INLVLC                            0000038E
+INLVLC0                           00000000
+INLVLC1                           00000001
+INLVLC2                           00000002
+INLVLC3                           00000003
+INLVLC4                           00000004
+INLVLC5                           00000005
+INLVLC6                           00000006
+INLVLC7                           00000007
+INTCON                            0000000B
+INTE                              00000004
+INTEDG                            00000006
+INTF                              00000001
+INTM                              00000003
+INTN                              00000003
+INTP                              00000004
+INTPPS                            00000E10
+INTPPS0                           00000000
+INTPPS1                           00000001
+INTPPS2                           00000002
+INTPPS3                           00000003
+INTPPS4                           00000004
+INVALID                           00000004
+IOCAF                             00000393
+IOCAF0                            00000000
+IOCAF1                            00000001
+IOCAF2                            00000002
+IOCAF3                            00000003
+IOCAF4                            00000004
+IOCAF5                            00000005
+IOCAN                             00000392
+IOCAN0                            00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 26
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+IOCAN1                            00000001
+IOCAN2                            00000002
+IOCAN3                            00000003
+IOCAN4                            00000004
+IOCAN5                            00000005
+IOCAP                             00000391
+IOCAP0                            00000000
+IOCAP1                            00000001
+IOCAP2                            00000002
+IOCAP3                            00000003
+IOCAP4                            00000004
+IOCAP5                            00000005
+IOCBF                             00000396
+IOCBF4                            00000004
+IOCBF5                            00000005
+IOCBF6                            00000006
+IOCBF7                            00000007
+IOCBN                             00000395
+IOCBN4                            00000004
+IOCBN5                            00000005
+IOCBN6                            00000006
+IOCBN7                            00000007
+IOCBP                             00000394
+IOCBP4                            00000004
+IOCBP5                            00000005
+IOCBP6                            00000006
+IOCBP7                            00000007
+IOCCF                             00000399
+IOCCF0                            00000000
+IOCCF1                            00000001
+IOCCF2                            00000002
+IOCCF3                            00000003
+IOCCF4                            00000004
+IOCCF5                            00000005
+IOCCF6                            00000006
+IOCCF7                            00000007
+IOCCN                             00000398
+IOCCN0                            00000000
+IOCCN1                            00000001
+IOCCN2                            00000002
+IOCCN3                            00000003
+IOCCN4                            00000004
+IOCCN5                            00000005
+IOCCN6                            00000006
+IOCCN7                            00000007
+IOCCP                             00000397
+IOCCP0                            00000000
+IOCCP1                            00000001
+IOCCP2                            00000002
+IOCCP3                            00000003
+IOCCP4                            00000004
+IOCCP5                            00000005
+IOCCP6                            00000006
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 27
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+IOCCP7                            00000007
+IOCIE                             00000003
+IOCIF                             00000000
+IRCF0                             00000003
+IRCF1                             00000004
+IRCF2                             00000005
+IRCF3                             00000006
+IS0                               00000000
+IS1                               00000001
+IS2                               00000002
+IS3                               00000003
+ISR                               00000005
+K10                               00000000
+K11                               00000001
+K110                              00000002
+K111                              00000003
+K112                              00000004
+K113                              00000005
+K114                              00000006
+K115                              00000007
+K12                               00000002
+K13                               00000003
+K14                               00000004
+K15                               00000005
+K16                               00000006
+K17                               00000007
+K18                               00000000
+K19                               00000001
+K20                               00000000
+K21                               00000001
+K210                              00000002
+K211                              00000003
+K212                              00000004
+K213                              00000005
+K214                              00000006
+K215                              00000007
+K22                               00000002
+K23                               00000003
+K24                               00000004
+K25                               00000005
+K26                               00000006
+K27                               00000007
+K28                               00000000
+K29                               00000001
+K30                               00000000
+K31                               00000001
+K310                              00000002
+K311                              00000003
+K312                              00000004
+K313                              00000005
+K314                              00000006
+K315                              00000007
+K32                               00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 28
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+K33                               00000003
+K34                               00000004
+K35                               00000005
+K36                               00000006
+K37                               00000007
+K38                               00000000
+K39                               00000001
+LADR10                            00000002
+LADR11                            00000003
+LADR12                            00000004
+LADR13                            00000005
+LADR14                            00000006
+LADR15                            00000007
+LADR2                             00000002
+LADR3                             00000003
+LADR4                             00000004
+LADR5                             00000005
+LADR6                             00000006
+LADR7                             00000007
+LADR8                             00000000
+LADR9                             00000001
+LATA                              0000010C
+LATA0                             00000000
+LATA1                             00000001
+LATA2                             00000002
+LATA3                             00000003
+LATA4                             00000004
+LATA5                             00000005
+LATB                              0000010D
+LATB4                             00000004
+LATB5                             00000005
+LATB6                             00000006
+LATB7                             00000007
+LATC                              0000010E
+LATC0                             00000000
+LATC1                             00000001
+LATC2                             00000002
+LATC3                             00000003
+LATC4                             00000004
+LATC5                             00000005
+LATC6                             00000006
+LATC7                             00000007
+LC1D1S0                           00000000
+LC1D1S1                           00000001
+LC1D1S2                           00000002
+LC1D1S3                           00000003
+LC1D1S4                           00000004
+LC1D1S5                           00000005
+LC1D2S0                           00000000
+LC1D2S1                           00000001
+LC1D2S2                           00000002
+LC1D2S3                           00000003
+LC1D2S4                           00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 29
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LC1D2S5                           00000005
+LC1D3S0                           00000000
+LC1D3S1                           00000001
+LC1D3S2                           00000002
+LC1D3S3                           00000003
+LC1D3S4                           00000004
+LC1D3S5                           00000005
+LC1D4S0                           00000000
+LC1D4S1                           00000001
+LC1D4S2                           00000002
+LC1D4S3                           00000003
+LC1D4S4                           00000004
+LC1D4S5                           00000005
+LC1EN                             00000007
+LC1G1D1N                          00000000
+LC1G1D1T                          00000001
+LC1G1D2N                          00000002
+LC1G1D2T                          00000003
+LC1G1D3N                          00000004
+LC1G1D3T                          00000005
+LC1G1D4N                          00000006
+LC1G1D4T                          00000007
+LC1G1POL                          00000000
+LC1G2D1N                          00000000
+LC1G2D1T                          00000001
+LC1G2D2N                          00000002
+LC1G2D2T                          00000003
+LC1G2D3N                          00000004
+LC1G2D3T                          00000005
+LC1G2D4N                          00000006
+LC1G2D4T                          00000007
+LC1G2POL                          00000001
+LC1G3D1N                          00000000
+LC1G3D1T                          00000001
+LC1G3D2N                          00000002
+LC1G3D2T                          00000003
+LC1G3D3N                          00000004
+LC1G3D3T                          00000005
+LC1G3D4N                          00000006
+LC1G3D4T                          00000007
+LC1G3POL                          00000002
+LC1G4D1N                          00000000
+LC1G4D1T                          00000001
+LC1G4D2N                          00000002
+LC1G4D2T                          00000003
+LC1G4D3N                          00000004
+LC1G4D3T                          00000005
+LC1G4D4N                          00000006
+LC1G4D4T                          00000007
+LC1G4POL                          00000003
+LC1INTN                           00000003
+LC1INTP                           00000004
+LC1MODE0                          00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 30
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LC1MODE1                          00000001
+LC1MODE2                          00000002
+LC1OUT                            00000005
+LC1POL                            00000007
+LC2D1S0                           00000000
+LC2D1S1                           00000001
+LC2D1S2                           00000002
+LC2D1S3                           00000003
+LC2D1S4                           00000004
+LC2D1S5                           00000005
+LC2D2S0                           00000000
+LC2D2S1                           00000001
+LC2D2S2                           00000002
+LC2D2S3                           00000003
+LC2D2S4                           00000004
+LC2D2S5                           00000005
+LC2D3S0                           00000000
+LC2D3S1                           00000001
+LC2D3S2                           00000002
+LC2D3S3                           00000003
+LC2D3S4                           00000004
+LC2D3S5                           00000005
+LC2D4S0                           00000000
+LC2D4S1                           00000001
+LC2D4S2                           00000002
+LC2D4S3                           00000003
+LC2D4S4                           00000004
+LC2D4S5                           00000005
+LC2EN                             00000007
+LC2G1D1N                          00000000
+LC2G1D1T                          00000001
+LC2G1D2N                          00000002
+LC2G1D2T                          00000003
+LC2G1D3N                          00000004
+LC2G1D3T                          00000005
+LC2G1D4N                          00000006
+LC2G1D4T                          00000007
+LC2G1POL                          00000000
+LC2G2D1N                          00000000
+LC2G2D1T                          00000001
+LC2G2D2N                          00000002
+LC2G2D2T                          00000003
+LC2G2D3N                          00000004
+LC2G2D3T                          00000005
+LC2G2D4N                          00000006
+LC2G2D4T                          00000007
+LC2G2POL                          00000001
+LC2G3D1N                          00000000
+LC2G3D1T                          00000001
+LC2G3D2N                          00000002
+LC2G3D2T                          00000003
+LC2G3D3N                          00000004
+LC2G3D3T                          00000005
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 31
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LC2G3D4N                          00000006
+LC2G3D4T                          00000007
+LC2G3POL                          00000002
+LC2G4D1N                          00000000
+LC2G4D1T                          00000001
+LC2G4D2N                          00000002
+LC2G4D2T                          00000003
+LC2G4D3N                          00000004
+LC2G4D3T                          00000005
+LC2G4D4N                          00000006
+LC2G4D4T                          00000007
+LC2G4POL                          00000003
+LC2INTN                           00000003
+LC2INTP                           00000004
+LC2MODE0                          00000000
+LC2MODE1                          00000001
+LC2MODE2                          00000002
+LC2OUT                            00000005
+LC2POL                            00000007
+LC3D1S0                           00000000
+LC3D1S1                           00000001
+LC3D1S2                           00000002
+LC3D1S3                           00000003
+LC3D1S4                           00000004
+LC3D1S5                           00000005
+LC3D2S0                           00000000
+LC3D2S1                           00000001
+LC3D2S2                           00000002
+LC3D2S3                           00000003
+LC3D2S4                           00000004
+LC3D2S5                           00000005
+LC3D3S0                           00000000
+LC3D3S1                           00000001
+LC3D3S2                           00000002
+LC3D3S3                           00000003
+LC3D3S4                           00000004
+LC3D3S5                           00000005
+LC3D4S0                           00000000
+LC3D4S1                           00000001
+LC3D4S2                           00000002
+LC3D4S3                           00000003
+LC3D4S4                           00000004
+LC3D4S5                           00000005
+LC3EN                             00000007
+LC3G1D1N                          00000000
+LC3G1D1T                          00000001
+LC3G1D2N                          00000002
+LC3G1D2T                          00000003
+LC3G1D3N                          00000004
+LC3G1D3T                          00000005
+LC3G1D4N                          00000006
+LC3G1D4T                          00000007
+LC3G1POL                          00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 32
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LC3G2D1N                          00000000
+LC3G2D1T                          00000001
+LC3G2D2N                          00000002
+LC3G2D2T                          00000003
+LC3G2D3N                          00000004
+LC3G2D3T                          00000005
+LC3G2D4N                          00000006
+LC3G2D4T                          00000007
+LC3G2POL                          00000001
+LC3G3D1N                          00000000
+LC3G3D1T                          00000001
+LC3G3D2N                          00000002
+LC3G3D2T                          00000003
+LC3G3D3N                          00000004
+LC3G3D3T                          00000005
+LC3G3D4N                          00000006
+LC3G3D4T                          00000007
+LC3G3POL                          00000002
+LC3G4D1N                          00000000
+LC3G4D1T                          00000001
+LC3G4D2N                          00000002
+LC3G4D2T                          00000003
+LC3G4D3N                          00000004
+LC3G4D3T                          00000005
+LC3G4D4N                          00000006
+LC3G4D4T                          00000007
+LC3G4POL                          00000003
+LC3INTN                           00000003
+LC3INTP                           00000004
+LC3MODE0                          00000000
+LC3MODE1                          00000001
+LC3MODE2                          00000002
+LC3OUT                            00000005
+LC3POL                            00000007
+LC4D1S0                           00000000
+LC4D1S1                           00000001
+LC4D1S2                           00000002
+LC4D1S3                           00000003
+LC4D1S4                           00000004
+LC4D1S5                           00000005
+LC4D2S0                           00000000
+LC4D2S1                           00000001
+LC4D2S2                           00000002
+LC4D2S3                           00000003
+LC4D2S4                           00000004
+LC4D2S5                           00000005
+LC4D3S0                           00000000
+LC4D3S1                           00000001
+LC4D3S2                           00000002
+LC4D3S3                           00000003
+LC4D3S4                           00000004
+LC4D3S5                           00000005
+LC4D4S0                           00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 33
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LC4D4S1                           00000001
+LC4D4S2                           00000002
+LC4D4S3                           00000003
+LC4D4S4                           00000004
+LC4D4S5                           00000005
+LC4EN                             00000007
+LC4G1D1N                          00000000
+LC4G1D1T                          00000001
+LC4G1D2N                          00000002
+LC4G1D2T                          00000003
+LC4G1D3N                          00000004
+LC4G1D3T                          00000005
+LC4G1D4N                          00000006
+LC4G1D4T                          00000007
+LC4G1POL                          00000000
+LC4G2D1N                          00000000
+LC4G2D1T                          00000001
+LC4G2D2N                          00000002
+LC4G2D2T                          00000003
+LC4G2D3N                          00000004
+LC4G2D3T                          00000005
+LC4G2D4N                          00000006
+LC4G2D4T                          00000007
+LC4G2POL                          00000001
+LC4G3D1N                          00000000
+LC4G3D1T                          00000001
+LC4G3D2N                          00000002
+LC4G3D2T                          00000003
+LC4G3D3N                          00000004
+LC4G3D3T                          00000005
+LC4G3D4N                          00000006
+LC4G3D4T                          00000007
+LC4G3POL                          00000002
+LC4G4D1N                          00000000
+LC4G4D1T                          00000001
+LC4G4D2N                          00000002
+LC4G4D2T                          00000003
+LC4G4D3N                          00000004
+LC4G4D3T                          00000005
+LC4G4D4N                          00000006
+LC4G4D4T                          00000007
+LC4G4POL                          00000003
+LC4INTN                           00000003
+LC4INTP                           00000004
+LC4MODE0                          00000000
+LC4MODE1                          00000001
+LC4MODE2                          00000002
+LC4OUT                            00000005
+LC4POL                            00000007
+LD                                00000006
+LDAR0                             00000000
+LDAR1                             00000001
+LFIOFR                            00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 34
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+LSAC0                             00000002
+LSAC1                             00000003
+LSBD0                             00000004
+LSBD1                             00000005
+LWLO                              00000005
+MC1OUT                            00000000
+MC2OUT                            00000001
+MFIOFR                            00000002
+MINUS1                            0000001A
+MINUS2                            00000026
+MISS0                             00000000
+MISS1                             00000001
+MISS10                            00000002
+MISS11                            00000003
+MISS12                            00000004
+MISS13                            00000005
+MISS14                            00000006
+MISS15                            00000007
+MISS2                             00000002
+MISS3                             00000003
+MISS4                             00000004
+MISS5                             00000005
+MISS6                             00000006
+MISS7                             00000007
+MISS8                             00000000
+MISS9                             00000001
+MLC1OUT                           00000000
+MLC2OUT                           00000001
+MLC3OUT                           00000002
+MLC4OUT                           00000003
+MODE                              00000000
+MODE0                             00000000
+MODE1                             00000001
+MODE2                             00000002
+MODE3                             00000003
+MODE4                             00000004
+MPP                               00000002
+MSK0                              00000000
+MSK1                              00000001
+MSK2                              00000002
+MSK3                              00000003
+MSK4                              00000004
+MSK5                              00000005
+MSK6                              00000006
+MSK7                              00000007
+NOT_BOR                           00000000
+NOT_PD                            00000003
+NOT_POR                           00000001
+NOT_RI                            00000002
+NOT_RMCLR                         00000003
+NOT_RWDT                          00000004
+NOT_T1SYNC                        00000002
+NOT_TO                            00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 35
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+NOT_WDTWV                         00000005
+NOT_WPUEN                         00000007
+ODA0                              00000000
+ODA1                              00000001
+ODA2                              00000002
+ODA4                              00000004
+ODA5                              00000005
+ODB4                              00000004
+ODB5                              00000005
+ODB6                              00000006
+ODB7                              00000007
+ODC0                              00000000
+ODC1                              00000001
+ODC2                              00000002
+ODC3                              00000003
+ODC4                              00000004
+ODC5                              00000005
+ODC6                              00000006
+ODC7                              00000007
+ODCONA                            0000028C
+ODCONB                            0000028D
+ODCONC                            0000028E
+OERR                              00000001
+ON                                00000007
+OPTION_REG                        00000095
+OSCCON                            00000099
+OSCFIE                            00000007
+OSCSTAT                           0000009A
+OSCTUNE                           00000098
+OSFIF                             00000007
+OSTS                              00000005
+OUT                               00000005
+OUT0                              00000000
+OUT1                              00000001
+OUT10                             00000002
+OUT11                             00000003
+OUT12                             00000004
+OUT13                             00000005
+OUT14                             00000006
+OUT15                             00000007
+OUT16                             00000000
+OUT17                             00000001
+OUT18                             00000002
+OUT19                             00000003
+OUT2                              00000002
+OUT20                             00000004
+OUT21                             00000005
+OUT22                             00000006
+OUT23                             00000007
+OUT24                             00000000
+OUT25                             00000001
+OUT26                             00000002
+OUT27                             00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 36
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+OUT28                             00000004
+OUT29                             00000005
+OUT3                              00000003
+OUT30                             00000006
+OUT31                             00000007
+OUT32                             00000000
+OUT33                             00000001
+OUT34                             00000002
+OUT35                             00000003
+OUT4                              00000004
+OUT5                              00000005
+OUT6                              00000006
+OUT7                              00000007
+OUT8                              00000000
+OUT9                              00000001
+OUTPS0                            00000000
+OUTPS1                            00000001
+OUTPS2                            00000002
+OUTPS3                            00000003
+OVRA                              00000004
+OVRB                              00000005
+OVRC                              00000006
+OVRD                              00000007
+P                                 00000004
+P3TSEL0                           00000004
+P3TSEL1                           00000005
+P4TSEL0                           00000006
+P4TSEL1                           00000007
+PCIE                              00000006
+PCL                               00000002
+PCLATH                            0000000A
+PCLATH_SHAD                       00000FE7
+PCON                              00000096
+PEIE                              00000006
+PEN                               00000002
+PER0                              00000000
+PER1                              00000001
+PER10                             00000002
+PER11                             00000003
+PER12                             00000004
+PER13                             00000005
+PER14                             00000006
+PER15                             00000007
+PER2                              00000002
+PER3                              00000003
+PER4                              00000004
+PER5                              00000005
+PER6                              00000006
+PER7                              00000007
+PER8                              00000000
+PER9                              00000001
+PERH0                             00000000
+PERH1                             00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 37
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PERH2                             00000002
+PERH3                             00000003
+PERH4                             00000004
+PERH5                             00000005
+PERH6                             00000006
+PERH7                             00000007
+PERL0                             00000000
+PERL1                             00000001
+PERL2                             00000002
+PERL3                             00000003
+PERL4                             00000004
+PERL5                             00000005
+PERL6                             00000006
+PERL7                             00000007
+PHP                               00000006
+PHS0                              00000000
+PHS1                              00000001
+PHS2                              00000002
+PHS3                              00000003
+PHS4                              00000004
+PHS5                              00000005
+PHS6                              00000006
+PHS7                              00000007
+PHS8                              00000000
+PHS9                              00000001
+PHSL8                             00000000
+PHSL9                             00000001
+PID1ACC                           0000060F
+PID1ACC0                          00000000
+PID1ACC1                          00000001
+PID1ACC10                         00000002
+PID1ACC11                         00000003
+PID1ACC12                         00000004
+PID1ACC13                         00000005
+PID1ACC14                         00000006
+PID1ACC15                         00000007
+PID1ACC16                         00000000
+PID1ACC17                         00000001
+PID1ACC18                         00000002
+PID1ACC19                         00000003
+PID1ACC2                          00000002
+PID1ACC20                         00000004
+PID1ACC21                         00000005
+PID1ACC22                         00000006
+PID1ACC23                         00000007
+PID1ACC24                         00000000
+PID1ACC25                         00000001
+PID1ACC26                         00000002
+PID1ACC27                         00000003
+PID1ACC28                         00000004
+PID1ACC29                         00000005
+PID1ACC3                          00000003
+PID1ACC30                         00000006
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 38
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PID1ACC31                         00000007
+PID1ACC32                         00000000
+PID1ACC33                         00000001
+PID1ACC34                         00000002
+PID1ACC4                          00000004
+PID1ACC5                          00000005
+PID1ACC6                          00000006
+PID1ACC7                          00000007
+PID1ACC8                          00000000
+PID1ACC9                          00000001
+PID1ACCHH                         00000612
+PID1ACCHL                         00000611
+PID1ACCLH                         00000610
+PID1ACCLL                         0000060F
+PID1ACCU                          00000613
+PID1BUSY                          00000006
+PID1CON                           00000614
+PID1DIE                           00000000
+PID1DIF                           00000000
+PID1EIE                           00000001
+PID1EIF                           00000001
+PID1EN                            00000007
+PID1IN                            0000058E
+PID1IN0                           00000000
+PID1IN1                           00000001
+PID1IN10                          00000002
+PID1IN11                          00000003
+PID1IN12                          00000004
+PID1IN13                          00000005
+PID1IN14                          00000006
+PID1IN15                          00000007
+PID1IN2                           00000002
+PID1IN3                           00000003
+PID1IN4                           00000004
+PID1IN5                           00000005
+PID1IN6                           00000006
+PID1IN7                           00000007
+PID1IN8                           00000000
+PID1IN9                           00000001
+PID1INH                           0000058F
+PID1INL                           0000058E
+PID1K1                            00000590
+PID1K10                           00000000
+PID1K11                           00000001
+PID1K110                          00000002
+PID1K111                          00000003
+PID1K112                          00000004
+PID1K113                          00000005
+PID1K114                          00000006
+PID1K115                          00000007
+PID1K12                           00000002
+PID1K13                           00000003
+PID1K14                           00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 39
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PID1K15                           00000005
+PID1K16                           00000006
+PID1K17                           00000007
+PID1K18                           00000000
+PID1K19                           00000001
+PID1K1H                           00000591
+PID1K1L                           00000590
+PID1K2                            00000592
+PID1K20                           00000000
+PID1K21                           00000001
+PID1K210                          00000002
+PID1K211                          00000003
+PID1K212                          00000004
+PID1K213                          00000005
+PID1K214                          00000006
+PID1K215                          00000007
+PID1K22                           00000002
+PID1K23                           00000003
+PID1K24                           00000004
+PID1K25                           00000005
+PID1K26                           00000006
+PID1K27                           00000007
+PID1K28                           00000000
+PID1K29                           00000001
+PID1K2H                           00000593
+PID1K2L                           00000592
+PID1K3                            00000594
+PID1K30                           00000000
+PID1K31                           00000001
+PID1K310                          00000002
+PID1K311                          00000003
+PID1K312                          00000004
+PID1K313                          00000005
+PID1K314                          00000006
+PID1K315                          00000007
+PID1K32                           00000002
+PID1K33                           00000003
+PID1K34                           00000004
+PID1K35                           00000005
+PID1K36                           00000006
+PID1K37                           00000007
+PID1K38                           00000000
+PID1K39                           00000001
+PID1K3H                           00000595
+PID1K3L                           00000594
+PID1MODE0                         00000000
+PID1MODE1                         00000001
+PID1MODE2                         00000002
+PID1OUT                           00000596
+PID1OUT0                          00000000
+PID1OUT1                          00000001
+PID1OUT10                         00000002
+PID1OUT11                         00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 40
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PID1OUT12                         00000004
+PID1OUT13                         00000005
+PID1OUT14                         00000006
+PID1OUT15                         00000007
+PID1OUT16                         00000000
+PID1OUT17                         00000001
+PID1OUT18                         00000002
+PID1OUT19                         00000003
+PID1OUT2                          00000002
+PID1OUT20                         00000004
+PID1OUT21                         00000005
+PID1OUT22                         00000006
+PID1OUT23                         00000007
+PID1OUT24                         00000000
+PID1OUT25                         00000001
+PID1OUT26                         00000002
+PID1OUT27                         00000003
+PID1OUT28                         00000004
+PID1OUT29                         00000005
+PID1OUT3                          00000003
+PID1OUT30                         00000006
+PID1OUT31                         00000007
+PID1OUT32                         00000000
+PID1OUT33                         00000001
+PID1OUT34                         00000002
+PID1OUT35                         00000003
+PID1OUT4                          00000004
+PID1OUT5                          00000005
+PID1OUT6                          00000006
+PID1OUT7                          00000007
+PID1OUT8                          00000000
+PID1OUT9                          00000001
+PID1OUTHH                         00000599
+PID1OUTHL                         00000598
+PID1OUTLH                         00000597
+PID1OUTLL                         00000596
+PID1OUTU                          0000059A
+PID1SET                           0000058C
+PID1SET0                          00000000
+PID1SET1                          00000001
+PID1SET10                         00000002
+PID1SET11                         00000003
+PID1SET12                         00000004
+PID1SET13                         00000005
+PID1SET14                         00000006
+PID1SET15                         00000007
+PID1SET2                          00000002
+PID1SET3                          00000003
+PID1SET4                          00000004
+PID1SET5                          00000005
+PID1SET6                          00000006
+PID1SET7                          00000007
+PID1SET8                          00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 41
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PID1SET9                          00000001
+PID1SETH                          0000058D
+PID1SETL                          0000058C
+PID1Z1                            0000059B
+PID1Z10                           00000000
+PID1Z11                           00000001
+PID1Z110                          00000002
+PID1Z111                          00000003
+PID1Z112                          00000004
+PID1Z113                          00000005
+PID1Z114                          00000006
+PID1Z115                          00000007
+PID1Z116                          00000000
+PID1Z12                           00000002
+PID1Z13                           00000003
+PID1Z14                           00000004
+PID1Z15                           00000005
+PID1Z16                           00000006
+PID1Z17                           00000007
+PID1Z18                           00000000
+PID1Z19                           00000001
+PID1Z1H                           0000059C
+PID1Z1L                           0000059B
+PID1Z1U                           0000059D
+PID1Z2                            0000060C
+PID1Z20                           00000000
+PID1Z21                           00000001
+PID1Z210                          00000002
+PID1Z211                          00000003
+PID1Z212                          00000004
+PID1Z213                          00000005
+PID1Z214                          00000006
+PID1Z215                          00000007
+PID1Z216                          00000000
+PID1Z22                           00000002
+PID1Z23                           00000003
+PID1Z24                           00000004
+PID1Z25                           00000005
+PID1Z26                           00000006
+PID1Z27                           00000007
+PID1Z28                           00000000
+PID1Z29                           00000001
+PID1Z2H                           0000060D
+PID1Z2L                           0000060C
+PID1Z2U                           0000060E
+PIE1                              00000090
+PIE2                              00000091
+PIE3                              00000092
+PIE4                              00000093
+PIE5                              00000094
+PINA                              0000000D
+PINB                              00000011
+PIR1                              00000010
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 42
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PIR2                              00000011
+PIR3                              00000012
+PIR4                              00000013
+PIR5                              00000014
+PLEN0                             00000000
+PLEN1                             00000001
+PLEN2                             00000002
+PLEN3                             00000003
+PLLR                              00000006
+PLUS1                             00000016
+PLUS2                             0000001F
+PMADR                             00000191
+PMADRH                            00000192
+PMADRL                            00000191
+PMCON1                            00000195
+PMCON2                            00000196
+PMDAT                             00000193
+PMDATH                            00000194
+PMDATL                            00000193
+POLA                              00000000
+POLB                              00000001
+POLC                              00000002
+POLD                              00000003
+POL_AT1CON0                       00000003
+POL_CLC1POL                       00000007
+POL_CLC2POL                       00000007
+POL_CLC3POL                       00000007
+POL_CLC4POL                       00000007
+POL_PWM3CON                       00000004
+POL_PWM4CON                       00000004
+PORTA                             0000000C
+PORTB                             0000000D
+PORTC                             0000000E
+POS                               00000070
+PPSLOCK                           00000E0F
+PPSLOCKED                         00000000
+PR2                               0000001B
+PR4                               00000414
+PR6                               0000041B
+PREC                              00000006
+PRP                               00000004
+PS0_AT1CON0                       00000004
+PS0_OPTION_REG                    00000000
+PS1_AT1CON0                       00000005
+PS1_OPTION_REG                    00000001
+PS2                               00000002
+PSA                               00000003
+PSCNT0                            00000000
+PSCNT1                            00000001
+PSCNT10                           00000002
+PSCNT11                           00000003
+PSCNT12                           00000004
+PSCNT13                           00000005
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 43
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PSCNT14                           00000006
+PSCNT15                           00000007
+PSCNT16                           00000000
+PSCNT17                           00000001
+PSCNT2                            00000002
+PSCNT3                            00000003
+PSCNT4                            00000004
+PSCNT5                            00000005
+PSCNT6                            00000006
+PSCNT7                            00000007
+PSCNT8                            00000000
+PSCNT9                            00000001
+PSYNC                             00000007
+PWM3CON                           00000619
+PWM3DC                            00000617
+PWM3DC0                           00000006
+PWM3DC1                           00000007
+PWM3DC2                           00000000
+PWM3DC3                           00000001
+PWM3DC4                           00000002
+PWM3DC5                           00000003
+PWM3DC6                           00000004
+PWM3DC7                           00000005
+PWM3DC8                           00000006
+PWM3DC9                           00000007
+PWM3DCH                           00000618
+PWM3DCL                           00000617
+PWM3EN                            00000007
+PWM3OUT                           00000005
+PWM3POL                           00000004
+PWM4CON                           0000061C
+PWM4DC                            0000061A
+PWM4DC0                           00000006
+PWM4DC1                           00000007
+PWM4DC2                           00000000
+PWM4DC3                           00000001
+PWM4DC4                           00000002
+PWM4DC5                           00000003
+PWM4DC6                           00000004
+PWM4DC7                           00000005
+PWM4DC8                           00000006
+PWM4DC9                           00000007
+PWM4DCH                           0000061B
+PWM4DCL                           0000061A
+PWM4EN                            00000007
+PWM4OUT                           00000005
+PWM4POL                           00000004
+PWMPW0                            00000006
+PWMPW1                            00000007
+PWMPW2                            00000000
+PWMPW3                            00000001
+PWMPW4                            00000002
+PWMPW5                            00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 44
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+PWMPW6                            00000004
+PWMPW7                            00000005
+PWMPW8                            00000006
+PWMPW9                            00000007
+RA0                               00000000
+RA0PPS                            00000E90
+RA0PPS0                           00000000
+RA0PPS1                           00000001
+RA0PPS2                           00000002
+RA0PPS3                           00000003
+RA0PPS4                           00000004
+RA1                               00000001
+RA1PPS                            00000E91
+RA1PPS0                           00000000
+RA1PPS1                           00000001
+RA1PPS2                           00000002
+RA1PPS3                           00000003
+RA1PPS4                           00000004
+RA2                               00000002
+RA2PPS                            00000E92
+RA2PPS0                           00000000
+RA2PPS1                           00000001
+RA2PPS2                           00000002
+RA2PPS3                           00000003
+RA2PPS4                           00000004
+RA3                               00000003
+RA4                               00000004
+RA4PPS                            00000E94
+RA4PPS0                           00000000
+RA4PPS1                           00000001
+RA4PPS2                           00000002
+RA4PPS3                           00000003
+RA4PPS4                           00000004
+RA5                               00000005
+RA5PPS                            00000E95
+RA5PPS0                           00000000
+RA5PPS1                           00000001
+RA5PPS2                           00000002
+RA5PPS3                           00000003
+RA5PPS4                           00000004
+RB4                               00000004
+RB4PPS                            00000E9C
+RB4PPS0                           00000000
+RB4PPS1                           00000001
+RB4PPS2                           00000002
+RB4PPS3                           00000003
+RB4PPS4                           00000004
+RB5                               00000005
+RB5PPS                            00000E9D
+RB5PPS0                           00000000
+RB5PPS1                           00000001
+RB5PPS2                           00000002
+RB5PPS3                           00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 45
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RB5PPS4                           00000004
+RB6                               00000006
+RB6PPS                            00000E9E
+RB6PPS0                           00000000
+RB6PPS1                           00000001
+RB6PPS2                           00000002
+RB6PPS3                           00000003
+RB6PPS4                           00000004
+RB7                               00000007
+RB7PPS                            00000E9F
+RB7PPS0                           00000000
+RB7PPS1                           00000001
+RB7PPS2                           00000002
+RB7PPS3                           00000003
+RB7PPS4                           00000004
+RC0                               00000000
+RC0PPS                            00000EA0
+RC0PPS0                           00000000
+RC0PPS1                           00000001
+RC0PPS2                           00000002
+RC0PPS3                           00000003
+RC0PPS4                           00000004
+RC1                               00000001
+RC1PPS                            00000EA1
+RC1PPS0                           00000000
+RC1PPS1                           00000001
+RC1PPS2                           00000002
+RC1PPS3                           00000003
+RC1PPS4                           00000004
+RC1REG                            00000199
+RC1STA                            0000019D
+RC2                               00000002
+RC2PPS                            00000EA2
+RC2PPS0                           00000000
+RC2PPS1                           00000001
+RC2PPS2                           00000002
+RC2PPS3                           00000003
+RC2PPS4                           00000004
+RC3                               00000003
+RC3PPS                            00000EA3
+RC3PPS0                           00000000
+RC3PPS1                           00000001
+RC3PPS2                           00000002
+RC3PPS3                           00000003
+RC3PPS4                           00000004
+RC4                               00000004
+RC4PPS                            00000EA4
+RC4PPS0                           00000000
+RC4PPS1                           00000001
+RC4PPS2                           00000002
+RC4PPS3                           00000003
+RC4PPS4                           00000004
+RC5                               00000005
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 46
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RC5PPS                            00000EA5
+RC5PPS0                           00000000
+RC5PPS1                           00000001
+RC5PPS2                           00000002
+RC5PPS3                           00000003
+RC5PPS4                           00000004
+RC6                               00000006
+RC6PPS                            00000EA6
+RC6PPS0                           00000000
+RC6PPS1                           00000001
+RC6PPS2                           00000002
+RC6PPS3                           00000003
+RC6PPS4                           00000004
+RC7                               00000007
+RC7PPS                            00000EA7
+RC7PPS0                           00000000
+RC7PPS1                           00000001
+RC7PPS2                           00000002
+RC7PPS3                           00000003
+RC7PPS4                           00000004
+RCEN                              00000003
+RCIDL                             00000006
+RCIE                              00000005
+RCIF                              00000005
+RCREG                             00000199
+RCREG1                            00000199
+RCSTA                             0000019D
+RCSTA1                            0000019D
+RD                                00000000
+REN                               00000006
+REPEAT                            00000006
+RES0                              00000000
+RES1                              00000001
+RES2                              00000002
+RES3                              00000003
+RES4                              00000004
+RES5                              00000005
+RES6                              00000006
+RES7                              00000007
+RES8                              00000000
+RES9                              00000001
+RSEL0                             00000000
+RSEL1                             00000001
+RSEL2                             00000002
+RSEL3                             00000003
+RSEN                              00000001
+RST                               00000005
+RX9                               00000006
+RX9D                              00000000
+RXPPS                             00000E24
+RXPPS0                            00000000
+RXPPS1                            00000001
+RXPPS2                            00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 47
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+RXPPS3                            00000003
+RXPPS4                            00000004
+R_NOT_W                           00000002
+S                                 00000003
+SBCDE                             00000002
+SBOREN                            00000007
+SCANBUSY                          00000005
+SCANCON0                          0000071C
+SCANEN                            00000007
+SCANGO                            00000006
+SCANHADR                          0000071A
+SCANHADR0                         00000000
+SCANHADR1                         00000001
+SCANHADR10                        00000002
+SCANHADR11                        00000003
+SCANHADR12                        00000004
+SCANHADR13                        00000005
+SCANHADR14                        00000006
+SCANHADR15                        00000007
+SCANHADR2                         00000002
+SCANHADR3                         00000003
+SCANHADR4                         00000004
+SCANHADR5                         00000005
+SCANHADR6                         00000006
+SCANHADR7                         00000007
+SCANHADR8                         00000000
+SCANHADR9                         00000001
+SCANHADRH                         0000071B
+SCANHADRL                         0000071A
+SCANIE                            00000007
+SCANIF                            00000007
+SCANINTM                          00000003
+SCANINVALID                       00000004
+SCANLADR                          00000718
+SCANLADR0                         00000000
+SCANLADR1                         00000001
+SCANLADR10                        00000002
+SCANLADR11                        00000003
+SCANLADR12                        00000004
+SCANLADR13                        00000005
+SCANLADR14                        00000006
+SCANLADR15                        00000007
+SCANLADR2                         00000002
+SCANLADR3                         00000003
+SCANLADR4                         00000004
+SCANLADR5                         00000005
+SCANLADR6                         00000006
+SCANLADR7                         00000007
+SCANLADR8                         00000000
+SCANLADR9                         00000001
+SCANLADRH                         00000719
+SCANLADRL                         00000718
+SCANMODE0                         00000000
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 48
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SCANMODE1                         00000001
+SCANTRIG                          0000071D
+SCANTSEL0                         00000000
+SCANTSEL1                         00000001
+SCANTSEL2                         00000002
+SCANTSEL3                         00000003
+SCIE                              00000005
+SCKP                              00000004
+SCS0                              00000000
+SCS1                              00000001
+SDAHT                             00000003
+SEMMI                             00000015
+SEN                               00000000
+SENDB                             00000003
+SET0                              00000000
+SET1                              00000001
+SET10                             00000002
+SET11                             00000003
+SET12                             00000004
+SET13                             00000005
+SET14                             00000006
+SET15                             00000007
+SET2                              00000002
+SET3                              00000003
+SET4                              00000004
+SET5                              00000005
+SET6                              00000006
+SET7                              00000007
+SET8                              00000000
+SET9                              00000001
+SHIFT0                            00000000
+SHIFT1                            00000001
+SHIFT10                           00000002
+SHIFT11                           00000003
+SHIFT12                           00000004
+SHIFT13                           00000005
+SHIFT14                           00000006
+SHIFT15                           00000007
+SHIFT2                            00000002
+SHIFT3                            00000003
+SHIFT4                            00000004
+SHIFT5                            00000005
+SHIFT6                            00000006
+SHIFT7                            00000007
+SHIFT8                            00000000
+SHIFT9                            00000001
+SHIFTM                            00000001
+SHUTDOWN                          00000007
+SLRA0                             00000000
+SLRA1                             00000001
+SLRA2                             00000002
+SLRA4                             00000004
+SLRA5                             00000005
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 49
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SLRB4                             00000004
+SLRB5                             00000005
+SLRB6                             00000006
+SLRB7                             00000007
+SLRC0                             00000000
+SLRC1                             00000001
+SLRC2                             00000002
+SLRC3                             00000003
+SLRC4                             00000004
+SLRC5                             00000005
+SLRC6                             00000006
+SLRC7                             00000007
+SLRCONA                           0000030C
+SLRCONB                           0000030D
+SLRCONC                           0000030E
+SMP                               00000007
+SMT1AS                            00000000
+SMT1CLK                           00000D9B
+SMT1CON0                          00000D98
+SMT1CON1                          00000D99
+SMT1CPR                           00000D8F
+SMT1CPR0                          00000000
+SMT1CPR1                          00000001
+SMT1CPR10                         00000002
+SMT1CPR11                         00000003
+SMT1CPR12                         00000004
+SMT1CPR13                         00000005
+SMT1CPR14                         00000006
+SMT1CPR15                         00000007
+SMT1CPR16                         00000000
+SMT1CPR17                         00000001
+SMT1CPR18                         00000002
+SMT1CPR19                         00000003
+SMT1CPR2                          00000002
+SMT1CPR20                         00000004
+SMT1CPR21                         00000005
+SMT1CPR22                         00000006
+SMT1CPR23                         00000007
+SMT1CPR3                          00000003
+SMT1CPR4                          00000004
+SMT1CPR5                          00000005
+SMT1CPR6                          00000006
+SMT1CPR7                          00000007
+SMT1CPR8                          00000000
+SMT1CPR9                          00000001
+SMT1CPRH                          00000D90
+SMT1CPRL                          00000D8F
+SMT1CPRU                          00000D91
+SMT1CPRUP                         00000007
+SMT1CPW                           00000D92
+SMT1CPW0                          00000000
+SMT1CPW1                          00000001
+SMT1CPW10                         00000002
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 50
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT1CPW11                         00000003
+SMT1CPW12                         00000004
+SMT1CPW13                         00000005
+SMT1CPW14                         00000006
+SMT1CPW15                         00000007
+SMT1CPW16                         00000000
+SMT1CPW17                         00000001
+SMT1CPW18                         00000002
+SMT1CPW19                         00000003
+SMT1CPW2                          00000002
+SMT1CPW20                         00000004
+SMT1CPW21                         00000005
+SMT1CPW22                         00000006
+SMT1CPW23                         00000007
+SMT1CPW3                          00000003
+SMT1CPW4                          00000004
+SMT1CPW5                          00000005
+SMT1CPW6                          00000006
+SMT1CPW7                          00000007
+SMT1CPW8                          00000000
+SMT1CPW9                          00000001
+SMT1CPWH                          00000D93
+SMT1CPWL                          00000D92
+SMT1CPWU                          00000D94
+SMT1CPWUP                         00000006
+SMT1CSEL0                         00000000
+SMT1CSEL1                         00000001
+SMT1CSEL2                         00000002
+SMT1GO                            00000007
+SMT1IE                            00000000
+SMT1IF                            00000000
+SMT1MODE0                         00000000
+SMT1MODE1                         00000001
+SMT1MODE2                         00000002
+SMT1MODE3                         00000003
+SMT1PR                            00000D95
+SMT1PR0                           00000000
+SMT1PR1                           00000001
+SMT1PR10                          00000002
+SMT1PR11                          00000003
+SMT1PR12                          00000004
+SMT1PR13                          00000005
+SMT1PR14                          00000006
+SMT1PR15                          00000007
+SMT1PR16                          00000000
+SMT1PR17                          00000001
+SMT1PR18                          00000002
+SMT1PR19                          00000003
+SMT1PR2                           00000002
+SMT1PR20                          00000004
+SMT1PR21                          00000005
+SMT1PR22                          00000006
+SMT1PR23                          00000007
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 51
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT1PR3                           00000003
+SMT1PR4                           00000004
+SMT1PR5                           00000005
+SMT1PR6                           00000006
+SMT1PR7                           00000007
+SMT1PR8                           00000000
+SMT1PR9                           00000001
+SMT1PRAIE                         00000001
+SMT1PRAIF                         00000001
+SMT1PRH                           00000D96
+SMT1PRL                           00000D95
+SMT1PRU                           00000D97
+SMT1PS0                           00000000
+SMT1PS1                           00000001
+SMT1PWAIE                         00000002
+SMT1PWAIF                         00000002
+SMT1REPEAT                        00000006
+SMT1RESET                         00000005
+SMT1SIG                           00000D9C
+SMT1SIGPPS                        00000E26
+SMT1SIGPPS0                       00000000
+SMT1SIGPPS1                       00000001
+SMT1SIGPPS2                       00000002
+SMT1SIGPPS3                       00000003
+SMT1SIGPPS4                       00000004
+SMT1SSEL0                         00000000
+SMT1SSEL1                         00000001
+SMT1SSEL2                         00000002
+SMT1SSEL3                         00000003
+SMT1SSEL4                         00000004
+SMT1STAT                          00000D9A
+SMT1TMR                           00000D8C
+SMT1TMR0                          00000000
+SMT1TMR1                          00000001
+SMT1TMR10                         00000002
+SMT1TMR11                         00000003
+SMT1TMR12                         00000004
+SMT1TMR13                         00000005
+SMT1TMR14                         00000006
+SMT1TMR15                         00000007
+SMT1TMR16                         00000000
+SMT1TMR17                         00000001
+SMT1TMR18                         00000002
+SMT1TMR19                         00000003
+SMT1TMR2                          00000002
+SMT1TMR20                         00000004
+SMT1TMR21                         00000005
+SMT1TMR22                         00000006
+SMT1TMR23                         00000007
+SMT1TMR3                          00000003
+SMT1TMR4                          00000004
+SMT1TMR5                          00000005
+SMT1TMR6                          00000006
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 52
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT1TMR7                          00000007
+SMT1TMR8                          00000000
+SMT1TMR9                          00000001
+SMT1TMRH                          00000D8D
+SMT1TMRL                          00000D8C
+SMT1TMRU                          00000D8E
+SMT1TS                            00000002
+SMT1WIN                           00000D9D
+SMT1WINPPS                        00000E27
+SMT1WS                            00000001
+SMT1WSEL0                         00000000
+SMT1WSEL1                         00000001
+SMT1WSEL2                         00000002
+SMT1WSEL3                         00000003
+SMT1WSEL4                         00000004
+SMT2AS                            00000000
+SMT2CLK                           00000DAD
+SMT2CON0                          00000DAA
+SMT2CON1                          00000DAB
+SMT2CPR                           00000DA1
+SMT2CPR0                          00000000
+SMT2CPR1                          00000001
+SMT2CPR10                         00000002
+SMT2CPR11                         00000003
+SMT2CPR12                         00000004
+SMT2CPR13                         00000005
+SMT2CPR14                         00000006
+SMT2CPR15                         00000007
+SMT2CPR16                         00000000
+SMT2CPR17                         00000001
+SMT2CPR18                         00000002
+SMT2CPR19                         00000003
+SMT2CPR2                          00000002
+SMT2CPR20                         00000004
+SMT2CPR21                         00000005
+SMT2CPR22                         00000006
+SMT2CPR23                         00000007
+SMT2CPR3                          00000003
+SMT2CPR4                          00000004
+SMT2CPR5                          00000005
+SMT2CPR6                          00000006
+SMT2CPR7                          00000007
+SMT2CPR8                          00000000
+SMT2CPR9                          00000001
+SMT2CPRH                          00000DA2
+SMT2CPRL                          00000DA1
+SMT2CPRU                          00000DA3
+SMT2CPRUP                         00000007
+SMT2CPW                           00000DA4
+SMT2CPW0                          00000000
+SMT2CPW1                          00000001
+SMT2CPW10                         00000002
+SMT2CPW11                         00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 53
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT2CPW12                         00000004
+SMT2CPW13                         00000005
+SMT2CPW14                         00000006
+SMT2CPW15                         00000007
+SMT2CPW16                         00000000
+SMT2CPW17                         00000001
+SMT2CPW18                         00000002
+SMT2CPW19                         00000003
+SMT2CPW2                          00000002
+SMT2CPW20                         00000004
+SMT2CPW21                         00000005
+SMT2CPW22                         00000006
+SMT2CPW23                         00000007
+SMT2CPW3                          00000003
+SMT2CPW4                          00000004
+SMT2CPW5                          00000005
+SMT2CPW6                          00000006
+SMT2CPW7                          00000007
+SMT2CPW8                          00000000
+SMT2CPW9                          00000001
+SMT2CPWH                          00000DA5
+SMT2CPWL                          00000DA4
+SMT2CPWU                          00000DA6
+SMT2CPWUP                         00000006
+SMT2CSEL0                         00000000
+SMT2CSEL1                         00000001
+SMT2CSEL2                         00000002
+SMT2GO                            00000007
+SMT2IE                            00000003
+SMT2IF                            00000003
+SMT2MODE0                         00000000
+SMT2MODE1                         00000001
+SMT2MODE2                         00000002
+SMT2MODE3                         00000003
+SMT2PR                            00000DA7
+SMT2PR0                           00000000
+SMT2PR1                           00000001
+SMT2PR10                          00000002
+SMT2PR11                          00000003
+SMT2PR12                          00000004
+SMT2PR13                          00000005
+SMT2PR14                          00000006
+SMT2PR15                          00000007
+SMT2PR16                          00000000
+SMT2PR17                          00000001
+SMT2PR18                          00000002
+SMT2PR19                          00000003
+SMT2PR2                           00000002
+SMT2PR20                          00000004
+SMT2PR21                          00000005
+SMT2PR22                          00000006
+SMT2PR23                          00000007
+SMT2PR3                           00000003
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 54
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT2PR4                           00000004
+SMT2PR5                           00000005
+SMT2PR6                           00000006
+SMT2PR7                           00000007
+SMT2PR8                           00000000
+SMT2PR9                           00000001
+SMT2PRAIE                         00000004
+SMT2PRAIF                         00000004
+SMT2PRH                           00000DA8
+SMT2PRL                           00000DA7
+SMT2PRU                           00000DA9
+SMT2PS0                           00000000
+SMT2PS1                           00000001
+SMT2PWAIE                         00000005
+SMT2PWAIF                         00000005
+SMT2REPEAT                        00000006
+SMT2RESET                         00000005
+SMT2SIG                           00000DAE
+SMT2SIGPPS                        00000E2C
+SMT2SIGPPS0                       00000000
+SMT2SIGPPS1                       00000001
+SMT2SIGPPS2                       00000002
+SMT2SIGPPS3                       00000003
+SMT2SIGPPS4                       00000004
+SMT2SSEL0                         00000000
+SMT2SSEL1                         00000001
+SMT2SSEL2                         00000002
+SMT2SSEL3                         00000003
+SMT2SSEL4                         00000004
+SMT2STAT                          00000DAC
+SMT2TMR                           00000D9E
+SMT2TMR0                          00000000
+SMT2TMR1                          00000001
+SMT2TMR10                         00000002
+SMT2TMR11                         00000003
+SMT2TMR12                         00000004
+SMT2TMR13                         00000005
+SMT2TMR14                         00000006
+SMT2TMR15                         00000007
+SMT2TMR16                         00000000
+SMT2TMR17                         00000001
+SMT2TMR18                         00000002
+SMT2TMR19                         00000003
+SMT2TMR2                          00000002
+SMT2TMR20                         00000004
+SMT2TMR21                         00000005
+SMT2TMR22                         00000006
+SMT2TMR23                         00000007
+SMT2TMR3                          00000003
+SMT2TMR4                          00000004
+SMT2TMR5                          00000005
+SMT2TMR6                          00000006
+SMT2TMR7                          00000007
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 55
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SMT2TMR8                          00000000
+SMT2TMR9                          00000001
+SMT2TMRH                          00000D9F
+SMT2TMRL                          00000D9E
+SMT2TMRU                          00000DA0
+SMT2TS                            00000002
+SMT2WIN                           00000DAF
+SMT2WINPPS                        00000E2D
+SMT2WINPPS0                       00000000
+SMT2WINPPS1                       00000001
+SMT2WINPPS2                       00000002
+SMT2WINPPS3                       00000003
+SMT2WINPPS4                       00000004
+SMT2WS                            00000001
+SMT2WSEL0                         00000000
+SMT2WSEL1                         00000001
+SMT2WSEL2                         00000002
+SMT2WSEL3                         00000003
+SMT2WSEL4                         00000004
+SMTWINPPS0                        00000000
+SMTWINPPS1                        00000001
+SMTWINPPS2                        00000002
+SMTWINPPS3                        00000003
+SMTWINPPS4                        00000004
+SP1BRG                            0000019B
+SP1BRGH                           0000019C
+SP1BRGL                           0000019B
+SPBRG                             0000019B
+SPBRG1                            0000019B
+SPBRGH                            0000019C
+SPBRGH1                           0000019C
+SPBRGL                            0000019B
+SPEN                              00000007
+SPLLEN                            00000007
+SPOL                              00000003
+SREN                              00000005
+SSEL0                             00000000
+SSEL1                             00000001
+SSEL2                             00000002
+SSEL3                             00000003
+SSEL4                             00000004
+SSP1ADD                           00000212
+SSP1ADD0                          00000000
+SSP1ADD1                          00000001
+SSP1ADD2                          00000002
+SSP1ADD3                          00000003
+SSP1ADD4                          00000004
+SSP1ADD5                          00000005
+SSP1ADD6                          00000006
+SSP1ADD7                          00000007
+SSP1BUF                           00000211
+SSP1BUF0                          00000000
+SSP1BUF1                          00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 56
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SSP1BUF2                          00000002
+SSP1BUF3                          00000003
+SSP1BUF4                          00000004
+SSP1BUF5                          00000005
+SSP1BUF6                          00000006
+SSP1BUF7                          00000007
+SSP1CON                           00000215
+SSP1CON1                          00000215
+SSP1CON2                          00000216
+SSP1CON3                          00000217
+SSP1IE                            00000003
+SSP1IF                            00000003
+SSP1MSK                           00000213
+SSP1MSK0                          00000000
+SSP1MSK1                          00000001
+SSP1MSK2                          00000002
+SSP1MSK3                          00000003
+SSP1MSK4                          00000004
+SSP1MSK5                          00000005
+SSP1MSK6                          00000006
+SSP1MSK7                          00000007
+SSP1STAT                          00000214
+SSPADD                            00000212
+SSPBUF                            00000211
+SSPCLKPPS                         00000E20
+SSPCLKPPS0                        00000000
+SSPCLKPPS1                        00000001
+SSPCLKPPS2                        00000002
+SSPCLKPPS3                        00000003
+SSPCLKPPS4                        00000004
+SSPCON                            00000215
+SSPCON1                           00000215
+SSPCON2                           00000216
+SSPCON3                           00000217
+SSPDATPPS                         00000E21
+SSPDATPPS0                        00000000
+SSPDATPPS1                        00000001
+SSPDATPPS2                        00000002
+SSPDATPPS3                        00000003
+SSPDATPPS4                        00000004
+SSPEN                             00000005
+SSPM0                             00000000
+SSPM1                             00000001
+SSPM2                             00000002
+SSPM3                             00000003
+SSPMSK                            00000213
+SSPOV                             00000006
+SSPSSPPS                          00000E22
+SSPSSPPS0                         00000000
+SSPSSPPS1                         00000001
+SSPSSPPS2                         00000002
+SSPSSPPS3                         00000003
+SSPSSPPS4                         00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 57
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+SSPSTAT                           00000214
+STATE                             00000002
+STATUS                            00000003
+STATUS_SHAD                       00000FE4
+STKOVF                            00000007
+STKPTR                            00000FED
+STKUNF                            00000006
+STP                               00000005
+STPT0                             00000000
+STPT1                             00000001
+STPT10                            00000002
+STPT11                            00000003
+STPT12                            00000004
+STPT13                            00000005
+STPT14                            00000006
+STPT2                             00000002
+STPT3                             00000003
+STPT4                             00000004
+STPT5                             00000005
+STPT6                             00000006
+STPT7                             00000007
+STPT8                             00000000
+STPT9                             00000001
+STRA                              00000000
+STRB                              00000001
+STRC                              00000002
+STRD                              00000003
+SWDTEN                            00000000
+SYNC                              00000004
+Start                             00000035
+T0CKIPPS                          00000E11
+T0CKIPPS0                         00000000
+T0CKIPPS1                         00000001
+T0CKIPPS2                         00000002
+T0CKIPPS3                         00000003
+T0CKIPPS4                         00000004
+T0CS                              00000005
+T0IE                              00000005
+T0IF                              00000002
+T0SE                              00000004
+T1CKIPPS                          00000E12
+T1CKIPPS0                         00000000
+T1CKIPPS1                         00000001
+T1CKIPPS2                         00000002
+T1CKIPPS3                         00000003
+T1CKIPPS4                         00000004
+T1CKPS0                           00000004
+T1CKPS1                           00000005
+T1CON                             00000018
+T1GCON                            00000019
+T1GGO_NOT_DONE                    00000003
+T1GPOL                            00000006
+T1GPPS                            00000E13
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 58
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+T1GPPS0                           00000000
+T1GPPS1                           00000001
+T1GPPS2                           00000002
+T1GPPS3                           00000003
+T1GPPS4                           00000004
+T1GSPM                            00000004
+T1GSS0                            00000000
+T1GSS1                            00000001
+T1GTM                             00000005
+T1GVAL                            00000002
+T2CKPOL                           00000006
+T2CKPS0                           00000004
+T2CKPS1                           00000005
+T2CKPS2                           00000006
+T2CKSYNC                          00000005
+T2CLKCON                          0000001E
+T2CON                             0000001C
+T2CS0                             00000000
+T2CS1                             00000001
+T2CS2                             00000002
+T2CS3                             00000003
+T2HLT                             0000001D
+T2MODE0                           00000000
+T2MODE1                           00000001
+T2MODE2                           00000002
+T2MODE3                           00000003
+T2MODE4                           00000004
+T2ON                              00000007
+T2OUTPS0                          00000000
+T2OUTPS1                          00000001
+T2OUTPS2                          00000002
+T2OUTPS3                          00000003
+T2PPS                             00000E18
+T2PPS0                            00000000
+T2PPS1                            00000001
+T2PPS2                            00000002
+T2PPS3                            00000003
+T2PPS4                            00000004
+T2PR                              0000001B
+T2PSYNC                           00000007
+T2RSEL0                           00000000
+T2RSEL1                           00000001
+T2RSEL2                           00000002
+T2RSEL3                           00000003
+T2RST                             0000001F
+T2TMR                             0000001A
+T3CKIPPS                          00000E19
+T3CKIPPS0                         00000000
+T3CKIPPS1                         00000001
+T3CKIPPS2                         00000002
+T3CKIPPS3                         00000003
+T3CKIPPS4                         00000004
+T3CKPS0                           00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 59
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+T3CKPS1                           00000005
+T3CON                             00000495
+T3GCON                            00000496
+T3GGO_NOT_DONE                    00000003
+T3GPOL                            00000006
+T3GPPS                            00000E1A
+T3GPPS0                           00000000
+T3GPPS1                           00000001
+T3GPPS2                           00000002
+T3GPPS3                           00000003
+T3GPPS4                           00000004
+T3GSPM                            00000004
+T3GSS0                            00000000
+T3GSS1                            00000001
+T3GTM                             00000005
+T3GVAL                            00000002
+T3SYNC                            00000002
+T4CKPOL                           00000006
+T4CKPS0                           00000004
+T4CKPS1                           00000005
+T4CKPS2                           00000006
+T4CKSYNC                          00000005
+T4CLKCON                          00000417
+T4CON                             00000415
+T4CS0                             00000000
+T4CS1                             00000001
+T4CS2                             00000002
+T4CS3                             00000003
+T4HLT                             00000416
+T4MODE0                           00000000
+T4MODE1                           00000001
+T4MODE2                           00000002
+T4MODE3                           00000003
+T4MODE4                           00000004
+T4ON                              00000007
+T4OUTPS0                          00000000
+T4OUTPS1                          00000001
+T4OUTPS2                          00000002
+T4OUTPS3                          00000003
+T4PPS                             00000E1B
+T4PPS0                            00000000
+T4PPS1                            00000001
+T4PPS2                            00000002
+T4PPS3                            00000003
+T4PPS4                            00000004
+T4PR                              00000414
+T4PSYNC                           00000007
+T4RSEL0                           00000000
+T4RSEL1                           00000001
+T4RSEL2                           00000002
+T4RSEL3                           00000003
+T4RST                             00000418
+T4TMR                             00000413
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 60
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+T5CKIPPS                          00000E1C
+T5CKIPPS0                         00000000
+T5CKIPPS1                         00000001
+T5CKIPPS2                         00000002
+T5CKIPPS3                         00000003
+T5CKIPPS4                         00000004
+T5CKPS0                           00000004
+T5CKPS1                           00000005
+T5CON                             0000049C
+T5GCON                            0000049D
+T5GGO_NOT_DONE                    00000003
+T5GPOL                            00000006
+T5GPPS                            00000E1D
+T5GPPS0                           00000000
+T5GPPS1                           00000001
+T5GPPS2                           00000002
+T5GPPS3                           00000003
+T5GPPS4                           00000004
+T5GSPM                            00000004
+T5GSS0                            00000000
+T5GSS1                            00000001
+T5GTM                             00000005
+T5GVAL                            00000002
+T5SYNC                            00000002
+T6CKPOL                           00000006
+T6CKPS0                           00000004
+T6CKPS1                           00000005
+T6CKPS2                           00000006
+T6CKSYNC                          00000005
+T6CLKCON                          0000041E
+T6CON                             0000041C
+T6CS0                             00000000
+T6CS1                             00000001
+T6CS2                             00000002
+T6CS3                             00000003
+T6HLT                             0000041D
+T6MODE0                           00000000
+T6MODE1                           00000001
+T6MODE2                           00000002
+T6MODE3                           00000003
+T6MODE4                           00000004
+T6ON                              00000007
+T6OUTPS0                          00000000
+T6OUTPS1                          00000001
+T6OUTPS2                          00000002
+T6OUTPS3                          00000003
+T6PPS                             00000E1E
+T6PPS0                            00000000
+T6PPS1                            00000001
+T6PPS2                            00000002
+T6PPS3                            00000003
+T6PPS4                            00000004
+T6PR                              0000041B
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 61
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+T6PSYNC                           00000007
+T6RSEL0                           00000000
+T6RSEL1                           00000001
+T6RSEL2                           00000002
+T6RSEL3                           00000003
+T6RST                             0000041F
+T6TMR                             0000041A
+TABEL                             00000256
+TMR0                              00000015
+TMR0CS                            00000005
+TMR0IE                            00000005
+TMR0IF                            00000002
+TMR0SE                            00000004
+TMR1                              00000016
+TMR1CS0                           00000006
+TMR1CS1                           00000007
+TMR1GE                            00000007
+TMR1GIE                           00000007
+TMR1GIF                           00000007
+TMR1H                             00000017
+TMR1IE                            00000000
+TMR1IF                            00000000
+TMR1L                             00000016
+TMR1ON                            00000000
+TMR2                              0000001A
+TMR2AS                            00000004
+TMR2IE                            00000001
+TMR2IF                            00000001
+TMR2ON                            00000007
+TMR3CS0                           00000006
+TMR3CS1                           00000007
+TMR3GE                            00000007
+TMR3GIE                           00000007
+TMR3GIF                           00000007
+TMR3H                             00000494
+TMR3IE                            00000006
+TMR3IF                            00000006
+TMR3L                             00000493
+TMR3ON                            00000000
+TMR4                              00000413
+TMR4AS                            00000005
+TMR4IE                            00000001
+TMR4IF                            00000001
+TMR4ON                            00000007
+TMR5CS0                           00000006
+TMR5CS1                           00000007
+TMR5GE                            00000007
+TMR5GIE                           00000005
+TMR5GIF                           00000005
+TMR5H                             0000049B
+TMR5IE                            00000004
+TMR5IF                            00000004
+TMR5L                             0000049A
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 62
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+TMR5ON                            00000000
+TMR6                              0000041A
+TMR6AS                            00000006
+TMR6IE                            00000002
+TMR6IF                            00000002
+TMR6ON                            00000007
+TOSH                              00000FEF
+TOSL                              00000FEE
+TRIGSEL0                          00000004
+TRIGSEL1                          00000005
+TRIGSEL2                          00000006
+TRIGSEL3                          00000007
+TRISA                             0000008C
+TRISA0                            00000000
+TRISA1                            00000001
+TRISA2                            00000002
+TRISA3                            00000003
+TRISA4                            00000004
+TRISA5                            00000005
+TRISB                             0000008D
+TRISB4                            00000004
+TRISB5                            00000005
+TRISB6                            00000006
+TRISB7                            00000007
+TRISC                             0000008E
+TRISC0                            00000000
+TRISC1                            00000001
+TRISC2                            00000002
+TRISC3                            00000003
+TRISC4                            00000004
+TRISC5                            00000005
+TRISC6                            00000006
+TRISC7                            00000007
+TRMT                              00000001
+TS                                00000002
+TSEL0                             00000000
+TSEL1                             00000001
+TSEL2                             00000002
+TSEL3                             00000003
+TSEN                              00000005
+TSRNG                             00000004
+TUN0                              00000000
+TUN1                              00000001
+TUN2                              00000002
+TUN3                              00000003
+TUN4                              00000004
+TUN5                              00000005
+TX1REG                            0000019A
+TX1STA                            0000019E
+TX9                               00000006
+TX9D                              00000000
+TXEN                              00000005
+TXIE                              00000004
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 63
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+TXIF                              00000004
+TXREG                             0000019A
+TXREG1                            0000019A
+TXSTA                             0000019E
+TXSTA1                            0000019E
+UA                                00000001
+UGRAS                             00000054
+VALID                             00000000
+VREGCON                           00000197
+VREGPM0                           00000000
+VREGPM1                           00000001
+W                                 00000000
+WCOL                              00000007
+WDTCON0                           00000711
+WDTCON1                           00000712
+WDTCS0                            00000004
+WDTCS1                            00000005
+WDTCS2                            00000006
+WDTPS0                            00000001
+WDTPS1                            00000002
+WDTPS2                            00000003
+WDTPS3                            00000004
+WDTPS4                            00000005
+WDTPSCNT0                         00000000
+WDTPSCNT1                         00000001
+WDTPSCNT10                        00000002
+WDTPSCNT11                        00000003
+WDTPSCNT12                        00000004
+WDTPSCNT13                        00000005
+WDTPSCNT14                        00000006
+WDTPSCNT15                        00000007
+WDTPSCNT16                        00000000
+WDTPSCNT17                        00000001
+WDTPSCNT2                         00000002
+WDTPSCNT3                         00000003
+WDTPSCNT4                         00000004
+WDTPSCNT5                         00000005
+WDTPSCNT6                         00000006
+WDTPSCNT7                         00000007
+WDTPSCNT8                         00000000
+WDTPSCNT9                         00000001
+WDTPSH                            00000714
+WDTPSL                            00000713
+WDTSEN                            00000000
+WDTSTATE                          00000002
+WDTTMR                            00000715
+WDTTMR0                           00000003
+WDTTMR1                           00000004
+WDTTMR2                           00000005
+WDTTMR3                           00000006
+WDTTMR4                           00000007
+WDTWINDOW0                        00000000
+WDTWINDOW1                        00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 64
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+WDTWINDOW2                        00000002
+WINDOW0                           00000000
+WINDOW1                           00000001
+WINDOW2                           00000002
+WPOL                              00000004
+WPUA                              0000020C
+WPUA0                             00000000
+WPUA1                             00000001
+WPUA2                             00000002
+WPUA3                             00000003
+WPUA4                             00000004
+WPUA5                             00000005
+WPUB                              0000020D
+WPUB4                             00000004
+WPUB5                             00000005
+WPUB6                             00000006
+WPUB7                             00000007
+WPUC                              0000020E
+WPUC0                             00000000
+WPUC1                             00000001
+WPUC2                             00000002
+WPUC3                             00000003
+WPUC4                             00000004
+WPUC5                             00000005
+WPUC6                             00000006
+WPUC7                             00000007
+WR                                00000001
+WREG                              00000009
+WREG_SHAD                         00000FE5
+WREN                              00000002
+WRERR                             00000003
+WS                                00000001
+WSEL0                             00000000
+WSEL1                             00000001
+WSEL2                             00000002
+WSEL3                             00000003
+WSEL4                             00000004
+WUE                               00000001
+XOR1                              00000001
+XOR10                             00000002
+XOR11                             00000003
+XOR12                             00000004
+XOR13                             00000005
+XOR14                             00000006
+XOR15                             00000007
+XOR2                              00000002
+XOR3                              00000003
+XOR4                              00000004
+XOR5                              00000005
+XOR6                              00000006
+XOR7                              00000007
+XOR8                              00000000
+XOR9                              00000001
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 65
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+Z                                 00000002
+Z10                               00000000
+Z11                               00000001
+Z110                              00000002
+Z111                              00000003
+Z112                              00000004
+Z113                              00000005
+Z114                              00000006
+Z115                              00000007
+Z116                              00000000
+Z12                               00000002
+Z13                               00000003
+Z14                               00000004
+Z15                               00000005
+Z16                               00000006
+Z17                               00000007
+Z18                               00000000
+Z19                               00000001
+Z20                               00000000
+Z21                               00000001
+Z210                              00000002
+Z211                              00000003
+Z212                              00000004
+Z213                              00000005
+Z214                              00000006
+Z215                              00000007
+Z216                              00000000
+Z22                               00000002
+Z23                               00000003
+Z24                               00000004
+Z25                               00000005
+Z26                               00000006
+Z27                               00000007
+Z28                               00000000
+Z29                               00000001
+ZCD1CON                           0000011C
+ZCD1EN                            00000007
+ZCD1INTN                          00000000
+ZCD1INTP                          00000001
+ZCD1OUT                           00000005
+ZCD1POL                           00000004
+ZCDIE                             00000004
+ZCDIF                             00000004
+Z_SHAD                            00000002
+_BOREN_NSLEEP                     00003DFF
+_BOREN_OFF                        000039FF
+_BOREN_ON                         00003FFF
+_BOREN_SBODEN                     00003BFF
+_BORV_HI                          00003BFF
+_BORV_LO                          00003FFF
+_CLKOUTEN_OFF                     00003FFF
+_CLKOUTEN_ON                      000037FF
+_CONFIG1                          00008007
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 66
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+_CONFIG2                          00008008
+_CONFIG3                          00008009
+_CP_OFF                           00003FFF
+_CP_ON                            00003F7F
+_DEVID1                           00008006
+_FCMEN_OFF                        00001FFF
+_FCMEN_ON                         00003FFF
+_FOSC_ECH                         00003FFF
+_FOSC_ECL                         00003FFD
+_FOSC_ECM                         00003FFE
+_FOSC_HS                          00003FFA
+_FOSC_INTOSC                      00003FFC
+_IDLOC0                           00008000
+_IDLOC1                           00008001
+_IDLOC2                           00008002
+_IDLOC3                           00008003
+_IESO_OFF                         00002FFF
+_IESO_ON                          00003FFF
+_LPBOR_OFF                        00003FFF
+_LPBOR_ON                         000037FF
+_LVP_OFF                          00001FFF
+_LVP_ON                           00003FFF
+_MCLRE_OFF                        00003FBF
+_MCLRE_ON                         00003FFF
+_PLLEN_OFF                        00003EFF
+_PLLEN_ON                         00003FFF
+_PPS1WAY_OFF                      00003FFB
+_PPS1WAY_ON                       00003FFF
+_PWRTE_OFF                        00003FFF
+_PWRTE_ON                         00003FDF
+_STVREN_OFF                       00003DFF
+_STVREN_ON                        00003FFF
+_WDTCCS_LFINTOSC                  000007FF
+_WDTCCS_MFINTOSC                  00000FFF
+_WDTCCS_SWC                       00003FFF
+_WDTCPS_WDTCPS0                   00003FE0
+_WDTCPS_WDTCPS1                   00003FE1
+_WDTCPS_WDTCPS10                  00003FF0
+_WDTCPS_WDTCPS11                  00003FF1
+_WDTCPS_WDTCPS12                  00003FF2
+_WDTCPS_WDTCPS1F                  00003FFF
+_WDTCPS_WDTCPS2                   00003FE2
+_WDTCPS_WDTCPS3                   00003FE3
+_WDTCPS_WDTCPS4                   00003FE4
+_WDTCPS_WDTCPS5                   00003FE5
+_WDTCPS_WDTCPS6                   00003FE6
+_WDTCPS_WDTCPS7                   00003FE7
+_WDTCPS_WDTCPS8                   00003FE8
+_WDTCPS_WDTCPS9                   00003FE9
+_WDTCPS_WDTCPSA                   00003FEA
+_WDTCPS_WDTCPSB                   00003FEB
+_WDTCPS_WDTCPSC                   00003FEC
+_WDTCPS_WDTCPSD                   00003FED
+MPASM 5.81              ENCODER_4X_2BYTE.ASM   1-18-2019  15:21:12         PAGE 67
+
+
+SYMBOL TABLE
+  LABEL                             VALUE 
+
+_WDTCPS_WDTCPSE                   00003FEE
+_WDTCPS_WDTCPSF                   00003FEF
+_WDTCWS_WDTCWS100                 00003EFF
+_WDTCWS_WDTCWS125                 000038FF
+_WDTCWS_WDTCWS25                  000039FF
+_WDTCWS_WDTCWS375                 00003AFF
+_WDTCWS_WDTCWS50                  00003BFF
+_WDTCWS_WDTCWS625                 00003CFF
+_WDTCWS_WDTCWS75                  00003DFF
+_WDTCWS_WDTCWSSW                  00003FFF
+_WDTE_NSLEEP                      00003FDF
+_WDTE_OFF                         00003F9F
+_WDTE_ON                          00003FFF
+_WDTE_SWDTEN                      00003FBF
+_WRT_ALL                          00003FFC
+_WRT_BOOT                         00003FFE
+_WRT_HALF                         00003FFD
+_WRT_OFF                          00003FFF
+_ZCD_OFF                          00003FFF
+_ZCD_ON                           00003F7F
+__16F1619                         00000001
+__DEBUG                           
+__MPLAB_DEBUGGER_PK3              1
+intcon                            b'11001000'
+intpps                            b'00010100'
+ioccn                             b'11000000'
+ioccp                             b'11000000'
+main                              00000052
+osccon                            b'01111000'
+s                                 00000072
+state                             00000073
+temp                              00000074
+
+Errors   :     0
+Warnings :    27 reported,     0 suppressed
+Messages :    20 reported,     0 suppressed
+
+
