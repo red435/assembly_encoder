@@ -1,4 +1,4 @@
-;Programmer: PÈntek RÛbert GergÛ 2018
+;Programmer: P√©ntek R√≥bert Gerg√≥ 2018
 ;Microcontroller: Microchip PIC16F1619
 ; TODO INSERT CONFIG CODE HERE USING CONFIG BITS GENERATOR
 #include "p16F1619.inc" 
@@ -12,30 +12,30 @@
  __CONFIG _CONFIG3, _WDTCPS_WDTCPS1F & _WDTE_OFF & _WDTCWS_WDTCWSSW & _WDTCCS_SWC 
 
 ;------------------------------------------------------------------------------- 
-;ÛRAJEL be·llÌt·s
- #define osccon b'01111000' ;16 mhz-re ·llÌtjuk a bels? oscill·tort 
+;√≥RAJEL be√°ll√≠t√°s
+ #define osccon b'01111000' ;16 mhz-re √°ll√≠tjuk a bels? oscill√°tort 
  
 ;------------------------------------------------------------------------------- 
-;INTERRUPT l·bak defini·l·sa
+;INTERRUPT l√°bak defini√°l√°sa
  
-#define intpps b'00010100' ; Interrupt perifÈria hozz·rendelÈs l·bakhoz
-#define intcon b'11001000' ; Interrupt konfigur·ciÛ v·ltoz·s figyelÈsre van be·llÌtva   
-#define ioccp  b'11000000' ; Interrupt felfutÛ Èl figyelÈs 6. 7. es l·bon C porton
-#define ioccn  b'11000000' ; Interrupt lefutÛ Èl figyelÈs 6. 7. es l·bon C porton
+#define intpps b'00010100' ; Interrupt perif√©ria hozz√°rendel√©s l√°bakhoz
+#define intcon b'11001000' ; Interrupt konfigur√°ci√≥ v√°ltoz√°s figyel√©sre van be√°ll√≠tva   
+#define ioccp  b'11000000' ; Interrupt felfut√≥ √©l figyel√©s 6. 7. es l√°bon C porton
+#define ioccn  b'11000000' ; Interrupt lefut√≥ √©l figyel√©s 6. 7. es l√°bon C porton
 
 
 ;-------------------------------------------------------------------------------    
 RES_VECT CODE 0x0000		; processor reset vector
     GOTO Start			; go to beginning of program
     
-org 4				;ISR kezd? cÌme
+org 4				;ISR kezd? c√≠me
 goto ISR
 
 ;-------------------------------------------------------------------------------
-;V·ltozÛk memÛria ter¸lethez rendelÈsre kˆzˆs ram-ot haszn·lom
+;V√°ltoz√≥k mem√≥ria ter√ºlethez rendel√©sre k√∂z√∂s ram-ot haszn√°lom
     
 cblock     0x70
-    POS:2   ;0x70 LSB, 0x71 MSB ;PozÌciÛt ebben a kÈt byteban t·roljuk
+    POS:2   ;0x70 LSB, 0x71 MSB ;Poz√≠ci√≥t ebben a k√©t byteban t√°roljuk
     s	    ;0x72
     state   ;0x73
     temp    ;0x74
@@ -45,8 +45,8 @@ endc
 ;INTERRUPT SERVICE ROUTINE
 
 ISR			;ISR programja
- BANKSEL PORTC		;megvizsg·ljuk melyik l·bon jˆtt interrupt
- movfw PORTC		;Ès ezt lementj¸k a temp-be
+ BANKSEL PORTC		;megvizsg√°ljuk melyik l√°bon j√∂tt interrupt
+ movfw PORTC		;√©s ezt lementj√ºk a temp-be
  movwf temp		
  btfss temp,7
  goto APIN
@@ -55,19 +55,19 @@ ISR			;ISR programja
  goto BPIN
  goto UGRAS
 
-PINA
-movfw s			;s-be lÈtrehozzuk az elˆz? Ès az aktu·lis ·llapot kombin·cioj·t
+APIN
+movfw s			;s-be l√©trehozzuk az el√∂z? √©s az aktu√°lis √°llapot kombin√°cioj√°t
 iorlw b'00000100'     
 movwf s
  goto BTEST
-PINB
+BPIN
 movfw s
 iorlw b'00001000'
 movwf s
  goto UGRAS
 
 ;---------------------------------------------------------
-;LehetsÈges esetek melyek el?fordulhatnak az enkÛder forg·sa kˆzben a t·bla ut·n ide ugrik vissza a program
+;Lehets√©ges esetek melyek el?fordulhatnak az enk√≥der forg√°sa k√∂zben a t√°bla ut√°n ide ugrik vissza a program
 SEMMI
     goto EXITISR
 PLUS1
@@ -100,25 +100,25 @@ EXITISR
  
 	    
  rrf s
- rrf s			;Itt jobbra shiftel¸nk kettˆt, hogy az legyen a rÈgi pozÌciÛ
+ rrf s			;Itt jobbra shiftel√ºnk kett√∂t, hogy az legyen a r√©gi poz√≠ci√≥
  movfw s	    
  andlw 0x03		;maszkolunk
  movwf s
  
    BANKSEL IOCCF
-    MOVLW 0xff		;interrupt flaget tˆrˆlj¸k a c porton
-    XORWF IOCCF, W	;Ezt az ISR-bˆl valo kilÈpÈs el?tt el kell vÈgezni    
-    ANDWF IOCCF, F	;Ezt Èrdemes k¸lˆn blokkokba helyezni Ìgy tˆbb el·gaz·shoz lehet felhaszn·lni    
+    MOVLW 0xff		;interrupt flaget t√∂r√∂lj√ºk a c porton
+    XORWF IOCCF, W	;Ezt az ISR-b√∂l valo kil√©p√©s el?tt el kell v√©gezni    
+    ANDWF IOCCF, F	;Ezt √©rdemes k√ºl√∂n blokkokba helyezni √≠gy t√∂bb el√°gaz√°shoz lehet felhaszn√°lni    
     retfie
  
 Start
 ;------------------------------------------------------------------------------- 
-;oRAJEL be·llÌt·s
+;oRAJEL be√°ll√≠t√°s
 BANKSEL OSCCON
     movlw osccon
     movwf OSCCON
 ;-------------------------------------------------------------------------------
-;I/O be·llÌt·sok
+;I/O be√°ll√≠t√°sok
 BANKSEL ANSELC
     CLRF ANSELC 
 
@@ -142,7 +142,7 @@ BANKSEL PORTC
    
 
 ;------------------------------------------------------------------------------- 
-;INTERRUPT l·bak be·llÌt·sa
+;INTERRUPT l√°bak be√°ll√≠t√°sa
 
 BANKSEL INTPPS
  movlw intpps
@@ -161,7 +161,7 @@ BANKSEL IOCCN
  movwf IOCCN
  
 ;------------------------------------------------------------------------------- 
-;State null·z·sa program indul·sakor
+;State null√°z√°sa program indul√°sakor
 movlw 0x00
 movwf POS
 movwf POS+1
@@ -181,23 +181,23 @@ movwf s
     goto main
     
 ;-------------------------------------------------
-;Sz·mÌtott ugr·s amely lev·logatja az enkÛder lehetsÈges ·llapotait
+;Sz√°m√≠tott ugr√°s amely lev√°logatja az enk√≥der lehets√©ges √°llapotait
 UGRAS
      org     0xf7 
      movfw     s
-     andlw     0x0F                ; Maskoljuk az ÈrvÈnytelen rÈszt csak az alsÛ 4 bit kell, ez 16 ÈrtÈket tud t·rolni; AlsÛ 4biten Ìgy az aktu·lis poziciÛ van
-     movwf     state		   ; state kˆztes v·ltozÛba mentj¸k el az aktu·lis pozÌciÛt
-     movlw     high TABEL	   ; A memÛriacÌm 13 bites ahol a t·bl·zatunk kezdˆdik(org 256) annak a fels? 5 bitjÈt bem·soljuk a pc lath ba
-     movwf     PCLATH		   ; A PCLATH fogja adni a t·bl·zat fels? 5 bitjÈnek a cimÈt, hogy nek¸nk csak az alsÛ 8 bittel keljen foglakoznunk
-     movlw     low TABEL	   ; A t·bl·zat cÌmÈnek alsÛ 8 bitjÈt elhelyezi a work regiszterbe
-     addwf     state,w             ; ¡llapothoz tartÛzÛ offset hozz·ad·sa work regiszterhez, ez ·ltal lÈtrejˆn a megfelel? ·llapothÛz tartozÛ memÛriacÌmunk aminek hat·s·ra a kiv·nt sz·mol·si esemÈnyt vÈgre tudjuk hajtani
-     btfsc     STATUS,C            ; T˙lcsordul·s ellen?rzÈs, ezzel ellenˆrizz¸k, hogy elÈfÈrt¸nk-e az adott memÛria lapon
-     incf      PCLATH,f            ; igen esetben: increment PCLATH   ha t˙llÛg akkor a pclathban lÈv? fels? 5 bitet eggyel eltoljuk, hogy r·fÈrj¸nk a t·bl·ra
+     andlw     0x0F                ; Maskoljuk az √©rv√©nytelen r√©szt csak az als√≥ 4 bit kell, ez 16 √©rt√©ket tud t√°rolni; Als√≥ 4biten √≠gy az aktu√°lis pozici√≥ van
+     movwf     state		   ; state k√∂ztes v√°ltoz√≥ba mentj√ºk el az aktu√°lis poz√≠ci√≥t
+     movlw     high TABEL	   ; A mem√≥riac√≠m 13 bites ahol a t√°bl√°zatunk kezd√∂dik(org 256) annak a fels? 5 bitj√©t bem√°soljuk a pc lath ba
+     movwf     PCLATH		   ; A PCLATH fogja adni a t√°bl√°zat fels? 5 bitj√©nek a cim√©t, hogy nek√ºnk csak az als√≥ 8 bittel keljen foglakoznunk
+     movlw     low TABEL	   ; A t√°bl√°zat c√≠m√©nek als√≥ 8 bitj√©t elhelyezi a work regiszterbe
+     addwf     state,w             ; √Ållapothoz tart√≥z√≥ offset hozz√°ad√°sa work regiszterhez, ez √°ltal l√©trej√∂n a megfelel? √°llapoth√≥z tartoz√≥ mem√≥riac√≠munk aminek hat√°s√°ra a kiv√°nt sz√°mol√°si esem√©nyt v√©gre tudjuk hajtani
+     btfsc     STATUS,C            ; T√∫lcsordul√°s ellen?rz√©s, ezzel ellen√∂rizz√ºk, hogy el√©f√©rt√ºnk-e az adott mem√≥ria lapon
+     incf      PCLATH,f            ; igen esetben: increment PCLATH   ha t√∫ll√≥g akkor a pclathban l√©v? fels? 5 bitet eggyel eltoljuk, hogy r√°f√©rj√ºnk a t√°bl√°ra
      movwf     PCL                
 ;----------------------------------------------------------------
- ;A lehetsÈges ·llapotokat tartalmazÛ t·bl·zat
- ;SEMMI->nincs elmozdul·s | PLUS1/2 -> counter +1/2 | MINUS1/2 -> counter -1/2
-    org 256		   ;  PCL mÛdosÌt·sa
+ ;A lehets√©ges √°llapotokat tartalmaz√≥ t√°bl√°zat
+ ;SEMMI->nincs elmozdul√°s | PLUS1/2 -> counter +1/2 | MINUS1/2 -> counter -1/2
+    org 256		   ;  PCL m√≥dos√≠t√°sa
 TABEL
      goto     SEMMI        ; 0000
      goto     PLUS1        ; 0001
